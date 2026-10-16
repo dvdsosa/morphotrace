@@ -296,9 +296,10 @@
     }
   }
   function updateStatus() {
-    if (cur < 0) { $("stFile").textContent = "—"; $("stArea").textContent = "Area: —"; $("stHint").textContent = ""; return; }
+    if (cur < 0) { $("stFile").textContent = "—"; $("stArea").textContent = "Area: —"; $("stHint").textContent = ""; $("clsChip").textContent = ""; return; }
     const im = images[cur], a = annotations[im.key], st = stats(a);
     $("stFile").textContent = `${cur + 1}/${images.length} · ${im.key}${im.cls ? "  [" + im.cls + "]" : ""} · ${im.w}×${im.h}`;
+    $("clsChip").textContent = `Class: ${im.cls || "—"}  ·  ${im.name}`;
     $("stArea").textContent = a.skip ? `UNUSABLE (${a.skipReason})` :
       `Area: ${st.area.toFixed(1)} px² · ${st.mm2.toFixed(4)} mm² · ${st.nPolys} poly${st.nHoles ? ` − ${st.nHoles} hole` : ""}`;
     if (pointer.inside) {
