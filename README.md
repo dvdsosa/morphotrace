@@ -9,7 +9,7 @@ Images never leave your computer: they're opened with the browser's File API and
 ## Features
 - Polygon drawing by clicks, freehand tracing (Shift + drag), multiple polygons per image, holes (subtracted).
 - Vertex editing: drag, insert (double-click an edge), delete (Alt + click); undo/redo.
-- Zoom at cursor, pan, nearest-neighbour rendering at high zoom for pixel-level work.
+- Zoom at cursor (Shift + wheel), scroll with the wheel, pan, nearest-neighbour rendering at high zoom for pixel-level work.
 - Display-only brightness/contrast/invert to see translucent boundaries (never alters exported data).
 - Per-image "unusable" flag with reason (e.g. truncated specimen).
 - Per-image annotation time, annotator ID and physical scale (µm/pixel) recorded in the export.
@@ -41,7 +41,8 @@ Images never leave your computer: they're opened with the browser's File API and
 | Toggle hole on selected polygon | `H` |
 | Delete selected polygon | `Del` (or `Backspace` when not drawing) |
 | Undo / redo | `Ctrl/⌘ + Z` / `Ctrl/⌘ + Shift + Z` (or `Ctrl/⌘ + Y`) |
-| Zoom at cursor | Mouse wheel |
+| Zoom at cursor | `Shift` + mouse wheel (or trackpad pinch) |
+| Scroll the image | Mouse wheel (vertical and horizontal) or trackpad swipe |
 | Pan | `Space` + drag, or right/middle-button drag |
 | Fit image to window | `F` |
 | Previous / next image | `←` / `→` (or `P` / `N`) |

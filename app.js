@@ -3,7 +3,7 @@
 (function () {
   "use strict";
 
-  const TOOL = { name: "MorphoTrace", version: "0.1.2" };
+  const TOOL = { name: "MorphoTrace", version: "0.1.3" };
   const STORE_KEY = "morphotrace.v1";
   const HIT_PX = 8;          // screen-space hit tolerance
   const FREEHAND_STEP = 3;   // screen px between freehand samples
@@ -404,8 +404,20 @@
   });
   cv.addEventListener("wheel", (e) => {
     e.preventDefault();
-    const [sx, sy] = localXY(e);
-    zoomAt(sx, sy, Math.exp(-e.deltaY * (e.ctrlKey ? 0.01 : 0.0015)));
+    if (cur < 0) return;
+    const unit = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? wrap.clientHeight : 1;  // lines/pages -> px
+    const dx = e.deltaX * unit, dy = e.deltaY * unit;
+    if (e.shiftKey || e.ctrlKey || e.metaKey) {
+      // Shift+wheel zooms (macOS turns Shift+wheel into horizontal deltas, so use whichever axis moved);
+      // ctrlKey is also what trackpad pinch gestures report.
+      const [sx, sy] = localXY(e);
+      const d = Math.abs(dy) >= Math.abs(dx) ? dy : dx;
+      zoomAt(sx, sy, Math.exp(-d * (e.ctrlKey ? 0.01 : 0.0015)));
+    } else {
+      // plain wheel pans: vertical wheel moves up/down, horizontal wheel (or tilt) moves left/right
+      view.tx -= dx; view.ty -= dy;
+      draw();
+    }
   }, { passive: false });
 
   // ---------- keyboard ----------
