@@ -32,7 +32,7 @@ Images never leave your computer: they're opened with the browser's File API and
 | Add a vertex | Click (draw mode) |
 | Trace freehand | `Shift` + drag (draw mode) |
 | Close polygon | Click the first vertex, double-click, or `Enter` |
-| Remove last vertex while drawing | `Backspace` |
+| Remove last vertex while drawing | Right-click (without dragging) or `Backspace` |
 | Cancel polygon / deselect | `Esc` |
 | Select polygon | Click it (edit mode) |
 | Move vertex | Drag it (edit mode) |

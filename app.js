@@ -3,7 +3,7 @@
 (function () {
   "use strict";
 
-  const TOOL = { name: "MorphoTrace", version: "0.1.4" };
+  const TOOL = { name: "MorphoTrace", version: "0.1.5" };
   const STORE_KEY = "morphotrace.v1";
   const HIT_PX = 8;          // screen-space hit tolerance
   const FREEHAND_STEP = 3;   // screen px between freehand samples
@@ -340,7 +340,7 @@
       $("stCursor").textContent = `x ${ix.toFixed(1)}  y ${iy.toFixed(1)}  zoom ${(view.s * 100).toFixed(0)}%`;
     }
     $("stHint").textContent = mode === "draw"
-      ? (drawing ? `${drawing.pts.length} vertices · click first vertex / Enter to close · Backspace undo vertex · Esc cancel` : "Click to start a polygon · Shift+drag to trace")
+      ? (drawing ? `${drawing.pts.length} vertices · click first vertex / Enter to close · right-click or Backspace: undo vertex · Esc cancel` : "Click to start a polygon · Shift+drag to trace")
       : (selected >= 0 ? "Drag vertices · double-click edge to insert · Alt+click vertex to delete · H hole · Del delete" : "Click a polygon to select it");
     $("modeDraw").classList.toggle("active", mode === "draw");
     $("modeEdit").classList.toggle("active", mode === "edit");
@@ -370,7 +370,7 @@
     if (cur < 0) return;
     cv.setPointerCapture(e.pointerId);
     const [sx, sy] = localXY(e), [ix, iy] = toImg(sx, sy);
-    if (e.button === 1 || e.button === 2 || spaceDown) { drag = { kind: "pan", sx, sy, tx: view.tx, ty: view.ty }; return; }
+    if (e.button === 1 || e.button === 2 || spaceDown) { drag = { kind: "pan", sx, sy, tx: view.tx, ty: view.ty, button: e.button, moved: false }; return; }
     if (e.button !== 0) return;
     if (mode === "draw") {
       if (drawing && drawing.pts.length >= 3) {
@@ -402,7 +402,10 @@
     const [sx, sy] = localXY(e);
     pointer = { x: sx, y: sy, inside: true };
     if (!drag) return draw();
-    if (drag.kind === "pan") { view.tx = drag.tx + sx - drag.sx; view.ty = drag.ty + sy - drag.sy; }
+    if (drag.kind === "pan") {
+      if (Math.hypot(sx - drag.sx, sy - drag.sy) > 4) drag.moved = true;
+      view.tx = drag.tx + sx - drag.sx; view.ty = drag.ty + sy - drag.sy;
+    }
     else if (drag.kind === "free") {
       if (Math.hypot(sx - drag.lx, sy - drag.ly) >= FREEHAND_STEP) { drawing.pts.push(clampPt(toImg(sx, sy), images[cur].w, images[cur].h)); drag.lx = sx; drag.ly = sy; }
     } else if (drag.kind === "vertex") {
@@ -412,7 +415,14 @@
     }
     draw();
   });
-  cv.addEventListener("pointerup", () => { if (drag && drag.kind === "vertex") changed(); drag = null; });
+  cv.addEventListener("pointerup", () => {
+    if (drag && drag.kind === "vertex") changed();
+    // a right-click without dragging removes the last vertex of the polygon being drawn (right-drag still pans)
+    if (drag && drag.kind === "pan" && drag.button === 2 && !drag.moved && drawing) {
+      drawing.pts.pop(); if (!drawing.pts.length) drawing = null; draw();
+    }
+    drag = null;
+  });
   cv.addEventListener("pointerleave", () => { pointer.inside = false; draw(); });
   cv.addEventListener("dblclick", (e) => {
     if (cur < 0) return;

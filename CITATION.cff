@@ -1,7 +1,7 @@
 cff-version: 1.2.0
 message: "If you use this software, please cite it as below."
 title: "MorphoTrace: a browser-based polygon annotation tool for projected-area ground truth"
-version: 0.1.4
+version: 0.1.5
 date-released: 2026-10-16
 license: MIT
 repository-code: "https://github.com/dvdsosa/morphotrace"
