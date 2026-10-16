@@ -468,6 +468,7 @@
           width: a.w, height: a.h, status: a.skip ? "unusable" : a.polygons.length ? "annotated" : "todo",
           unusable_reason: a.skipReason || "", time_s: Math.round(a.timeMs / 100) / 10,
           area_px_polygon: round3(st.area), area_mm2_polygon: st.mm2, perimeter_px: round3(st.per),
+          area_px_by_label: byLabel(a),
           polygons: a.polygons,
         };
         if (maskCounts && k in maskCounts) { o.area_px_mask = maskCounts[k]; o.area_mm2_mask = maskCounts[k] * Math.pow(Number(settings.umpp), 2) / 1e6; }
@@ -475,11 +476,21 @@
       }),
     };
   }
+  function byLabel(ann) {
+    // net polygon area per label (holes subtract from the label they carry)
+    const out = {};
+    for (const p of ann.polygons) {
+      const k = p.label || "unlabelled";
+      out[k] = round3((out[k] || 0) + (p.hole ? -1 : 1) * shoelace(p.points));
+    }
+    return out;
+  }
   function toCsv(obj) {
-    const cols = ["rel_path", "file", "class", "status", "unusable_reason", "width", "height", "n_polygons", "n_holes", "area_px_polygon", "area_mm2_polygon", "area_px_mask", "area_mm2_mask", "perimeter_px", "time_s"];
+    const cols = ["rel_path", "file", "class", "status", "unusable_reason", "width", "height", "n_polygons", "n_holes", "area_px_polygon", "area_mm2_polygon", "area_px_mask", "area_mm2_mask", "area_px_by_label", "perimeter_px", "time_s"];
     const esc = (v) => { const s = v === undefined || v === null ? "" : String(v); return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
     const rows = obj.images.map((r) => {
-      const ext = Object.assign({}, r, { n_polygons: r.polygons.filter((p) => !p.hole).length, n_holes: r.polygons.filter((p) => p.hole).length });
+      const ext = Object.assign({}, r, { n_polygons: r.polygons.filter((p) => !p.hole).length, n_holes: r.polygons.filter((p) => p.hole).length,
+        area_px_by_label: Object.entries(r.area_px_by_label || {}).map(([k, v]) => `${k}=${v}`).join(";") });
       return cols.map((c) => esc(ext[c])).join(",");
     });
     return `# ${TOOL.name} ${TOOL.version} | annotator=${obj.annotator} | um_per_px=${obj.um_per_px} | ${obj.exported}\n` + cols.join(",") + "\n" + rows.join("\n") + "\n";

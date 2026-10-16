@@ -14,7 +14,7 @@ Images never leave your computer: they're opened with the browser's File API and
 - Per-image "unusable" flag with reason (e.g. truncated specimen).
 - Per-image annotation time, annotator ID and physical scale (µm/pixel) recorded in the export.
 - Autosave in the browser; JSON import to resume or to review someone else's annotations.
-- Export: `annotations.json` (all vertices), `areas.csv`, and a ZIP with binary PNG masks.
+- Export: `annotations.json` (all vertices), `areas.csv`, and a ZIP with binary PNG masks. Polygon labels (e.g. `body`, `appendage`) are kept and areas are also reported per label.
 
 ## Measurement definitions
 - Vertices are stored in continuous image-pixel coordinates; pixel *(i, j)* covers [i, i+1) × [j, j+1), origin top-left.
