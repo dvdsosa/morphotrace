@@ -326,7 +326,7 @@
       li.append(dot, nm); li.onclick = () => go(i);
       ul.append(li);
     });
-    $("progress").textContent = images.length ? `${done} done · ${skip} unusable · ${images.length}` : "";
+    $("progress").textContent = images.length ? `${done}/${images.length} done · ${skip} unusable` : "";
     const curLi = ul.children[cur]; if (curLi) curLi.scrollIntoView({ block: "nearest" });
   }
 
