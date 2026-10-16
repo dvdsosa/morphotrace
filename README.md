@@ -18,7 +18,7 @@ Images never leave your computer: they're opened with the browser's File API and
 
 ## Measurement definitions
 - Vertices are stored in continuous image-pixel coordinates; pixel *(i, j)* covers [i, i+1) × [j, j+1), origin top-left.
-- `area_px_polygon`: exact shoelace area of all non-hole polygons minus hole polygons. Overlapping non-hole polygons are counted twice, so don't overlap them.
+- `area_px_polygon`: exact shoelace area of all non-hole polygons minus hole polygons, after clipping every polygon to the image rectangle (vertices cannot lie outside the image). Overlapping non-hole polygons are counted twice, so don't overlap them.
 - `area_px_mask`: number of foreground pixels in the exported binary mask (rasterised at 50 % pixel coverage). It's comparable with pixel-count areas from segmentation pipelines.
 - `area_px_by_label`: net polygon area for each polygon label (e.g. `body=2000;appendage=300` in the CSV).
 - `area_mm2_* = area_px × (µm/px)² / 10⁶`.
