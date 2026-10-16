@@ -1,8 +1,8 @@
-# PolyArea Annotator
+# MorphoTrace
 
 A dependency-free, browser-based polygon annotation tool for producing **projected-area ground truth** in scientific imaging (e.g. plankton biometry). Click vertices around an object (or Shift-drag to trace), mark interior holes, and export exact polygon areas, binary masks and per-image CSV.
 
-**Live version:** https://dvdsosa.github.io/polyarea-annotator/ · **Archive:** Zenodo DOI (see `CITATION.cff`)
+**Live version:** https://dvdsosa.github.io/morphotrace/ · **Archive:** Zenodo DOI (see `CITATION.cff`)
 
 Images never leave your computer: they're opened with the browser's File API and nothing is uploaded. The tool also runs offline. Download the repository and open `index.html`.
 

@@ -1,5 +1,5 @@
 {
-  "title": "PolyArea Annotator: a browser-based polygon annotation tool for projected-area ground truth",
+  "title": "MorphoTrace: a browser-based polygon annotation tool for projected-area ground truth",
   "upload_type": "software",
   "license": "MIT",
   "creators": [{"name": "Sosa-Trejo, David", "orcid": "0000-0002-6337-8698", "affiliation": "Universidad de Las Palmas de Gran Canaria (IOCAG) / University of Málaga"}],

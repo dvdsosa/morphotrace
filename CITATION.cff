@@ -1,11 +1,11 @@
 cff-version: 1.2.0
 message: "If you use this software, please cite it as below."
-title: "PolyArea Annotator: a browser-based polygon annotation tool for projected-area ground truth"
-version: 1.0.0
+title: "MorphoTrace: a browser-based polygon annotation tool for projected-area ground truth"
+version: 0.1.0
 date-released: 2026-10-16
 license: MIT
-repository-code: "https://github.com/dvdsosa/polyarea-annotator"
-url: "https://dvdsosa.github.io/polyarea-annotator/"
+repository-code: "https://github.com/dvdsosa/morphotrace"
+url: "https://dvdsosa.github.io/morphotrace/"
 authors:
   - family-names: Sosa-Trejo
     given-names: David

@@ -1,10 +1,10 @@
-// PolyArea Annotator — dependency-free polygon annotation for projected-area ground truth.
+// MorphoTrace — dependency-free polygon annotation for projected-area ground truth.
 // Coordinates are stored in continuous image-pixel space: pixel (i, j) spans [i, i+1) x [j, j+1).
 (function () {
   "use strict";
 
-  const TOOL = { name: "PolyArea Annotator", version: "1.0.0" };
-  const STORE_KEY = "polyarea.v1";
+  const TOOL = { name: "MorphoTrace", version: "0.1.0" };
+  const STORE_KEY = "morphotrace.v1";
   const HIT_PX = 8;          // screen-space hit tolerance
   const FREEHAND_STEP = 3;   // screen px between freehand samples
 
@@ -502,7 +502,7 @@
     const obj = exportObject(counts);
     z.add("annotations.json", JSON.stringify(obj, null, 1));
     z.add("areas.csv", toCsv(obj));
-    download(z.blob(), `polyarea_${stamp()}.zip`);
+    download(z.blob(), `morphotrace_${stamp()}.zip`);
   };
 
   // ---------- import ----------
@@ -556,5 +556,5 @@
   resize();
 
   // exposed for automated tests
-  window.__polyarea = { shoelace, stats, get annotations() { return annotations; }, get view() { return view; } };
+  window.__morphotrace = { shoelace, stats, get annotations() { return annotations; }, get view() { return view; } };
 })();
