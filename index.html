@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PolyArea Annotator</title>
+<meta name="description" content="Browser-based polygon annotation tool for projected-area ground truth. Images never leave your computer.">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">PolyArea <span>Annotator</span></div>
+  <div class="tb-group">
+    <label class="btn primary" title="Load images (or a folder of class sub-folders)">
+      Open images<input id="fileInput" type="file" accept="image/*" multiple hidden>
+    </label>
+    <label class="btn" title="Load a whole folder; parent folder name is recorded as class">
+      Open folder<input id="dirInput" type="file" webkitdirectory multiple hidden>
+    </label>
+    <label class="btn" title="Resume from a previously exported annotations.json">
+      Import JSON<input id="jsonInput" type="file" accept=".json,application/json" hidden>
+    </label>
+  </div>
+  <div class="tb-group">
+    <button class="btn" id="exportJson">Export JSON</button>
+    <button class="btn" id="exportCsv">Export CSV</button>
+    <button class="btn" id="exportZip">Masks (.zip)</button>
+  </div>
+  <button class="btn ghost" id="helpBtn" aria-label="Help">?</button>
+</header>
+
+<main class="layout">
+  <aside class="sidebar" id="sidebar">
+    <section class="panel">
+      <h2>Session</h2>
+      <label class="field">Annotator ID<input id="annotator" type="text" placeholder="e.g. DST"></label>
+      <label class="field">Scale (µm / pixel)<input id="umpp" type="number" step="0.01" min="0" value="7.38"></label>
+      <label class="field">Polygon label<input id="label" type="text" value="organism"></label>
+    </section>
+    <section class="panel">
+      <h2>Display <small>(view only, not saved)</small></h2>
+      <label class="field">Brightness <input id="bright" type="range" min="40" max="250" value="100"></label>
+      <label class="field">Contrast <input id="contr" type="range" min="40" max="300" value="100"></label>
+      <label class="check"><input id="invert" type="checkbox"> Invert</label>
+      <label class="check"><input id="fillPolys" type="checkbox" checked> Fill polygons</label>
+      <button class="btn small" id="resetView">Reset display</button>
+    </section>
+    <section class="panel grow">
+      <h2>Images <span id="progress" class="muted"></span></h2>
+      <ul id="imageList" class="imglist"></ul>
+    </section>
+  </aside>
+
+  <section class="stage">
+    <div class="toolbar">
+      <div class="seg" role="group" aria-label="Mode">
+        <button class="btn seg-btn active" id="modeDraw" title="Draw (D)">Draw</button>
+        <button class="btn seg-btn" id="modeEdit" title="Edit (E)">Edit</button>
+      </div>
+      <button class="btn" id="holeBtn" title="Toggle selected polygon as hole (H)">Hole</button>
+      <button class="btn" id="delBtn" title="Delete selected polygon (Del)">Delete</button>
+      <button class="btn" id="undoBtn" title="Undo (Ctrl/⌘+Z)">Undo</button>
+      <button class="btn" id="redoBtn" title="Redo (Ctrl/⌘+Shift+Z)">Redo</button>
+      <button class="btn" id="fitBtn" title="Fit image (F)">Fit</button>
+      <span class="spacer"></span>
+      <button class="btn" id="skipBtn" title="Mark unusable (X)">Unusable</button>
+      <button class="btn" id="prevBtn" title="Previous (←)">◀</button>
+      <button class="btn" id="nextBtn" title="Next (→)">▶</button>
+    </div>
+    <div class="canvas-wrap" id="wrap">
+      <canvas id="cv"></canvas>
+      <div class="empty" id="empty">
+        <p><strong>Open images</strong> or drop them here.</p>
+        <p class="muted">Images are processed locally in your browser and are never uploaded.</p>
+      </div>
+    </div>
+    <footer class="statusbar">
+      <span id="stFile">—</span>
+      <span id="stArea">Area: —</span>
+      <span id="stCursor"></span>
+      <span id="stHint" class="muted"></span>
+    </footer>
+  </section>
+</main>
+
+<dialog id="help">
+  <h2>PolyArea Annotator — help</h2>
+  <div class="help-grid">
+    <div>
+      <h3>Draw mode (D)</h3>
+      <ul>
+        <li><kbd>Click</kbd> add a vertex</li>
+        <li><kbd>Shift</kbd>+drag trace freehand</li>
+        <li>Click the first vertex, <kbd>Enter</kbd> or double-click to close</li>
+        <li><kbd>Backspace</kbd> remove last vertex · <kbd>Esc</kbd> cancel</li>
+      </ul>
+      <h3>Edit mode (E)</h3>
+      <ul>
+        <li>Click a polygon to select it</li>
+        <li>Drag a vertex to move it</li>
+        <li>Double-click an edge to insert a vertex</li>
+        <li><kbd>Alt</kbd>+click a vertex to delete it</li>
+        <li><kbd>H</kbd> toggle hole · <kbd>Del</kbd> delete polygon</li>
+      </ul>
+    </div>
+    <div>
+      <h3>View</h3>
+      <ul>
+        <li>Wheel: zoom at cursor · <kbd>F</kbd> fit</li>
+        <li><kbd>Space</kbd>+drag or right-drag: pan</li>
+        <li><kbd>←</kbd>/<kbd>→</kbd> previous / next image</li>
+        <li><kbd>X</kbd> mark image unusable (with reason)</li>
+      </ul>
+      <h3>Measurement</h3>
+      <p>Area is computed exactly from the polygon vertices (shoelace formula, holes subtracted) and also from the rasterised binary mask. Physical area uses the scale field: mm² = px × (µm/px)² / 10⁶.</p>
+      <p>Work is autosaved in this browser. Export JSON regularly as a backup.</p>
+    </div>
+  </div>
+  <form method="dialog"><button class="btn primary">Close</button></form>
+</dialog>
+
+<script src="zip.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
