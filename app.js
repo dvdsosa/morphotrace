@@ -3,7 +3,7 @@
 (function () {
   "use strict";
 
-  const TOOL = { name: "MorphoTrace", version: "0.1.3" };
+  const TOOL = { name: "MorphoTrace", version: "0.1.4" };
   const STORE_KEY = "morphotrace.v1";
   const HIT_PX = 8;          // screen-space hit tolerance
   const FREEHAND_STEP = 3;   // screen px between freehand samples
@@ -76,6 +76,39 @@
     t = Math.max(0, Math.min(1, t));
     return Math.hypot(px - (x1 + t * dx), py - (y1 + t * dy));
   }
+  // Sutherland–Hodgman clip of a polygon to the image rectangle [0,w]x[0,h]
+  function clipToImage(pts, w, h) {
+    if (!w || !h) return pts;
+    const edges = [
+      [(p) => p[0] >= 0, (a, b) => [0, a[1] + (b[1] - a[1]) * (0 - a[0]) / (b[0] - a[0])]],
+      [(p) => p[0] <= w, (a, b) => [w, a[1] + (b[1] - a[1]) * (w - a[0]) / (b[0] - a[0])]],
+      [(p) => p[1] >= 0, (a, b) => [a[0] + (b[0] - a[0]) * (0 - a[1]) / (b[1] - a[1]), 0]],
+      [(p) => p[1] <= h, (a, b) => [a[0] + (b[0] - a[0]) * (h - a[1]) / (b[1] - a[1]), h]],
+    ];
+    let out = pts;
+    for (const [inside, cross] of edges) {
+      const input = out; out = [];
+      for (let i = 0; i < input.length; i++) {
+        const cur = input[i], prev = input[(i + input.length - 1) % input.length];
+        if (inside(cur)) { if (!inside(prev)) out.push(cross(prev, cur)); out.push(cur); }
+        else if (inside(prev)) out.push(cross(prev, cur));
+      }
+      if (!out.length) break;
+    }
+    return out.map(([x, y]) => [round3(x), round3(y)]);
+  }
+  const clampPt = ([x, y], w, h) => [Math.max(0, Math.min(w || x, x)), Math.max(0, Math.min(h || y, y))];
+  function clipAnnotation(ann) {
+    if (!ann.w) return false;
+    let changed = false;
+    ann.polygons = ann.polygons.map((p) => {
+      const out = p.points.some(([x, y]) => x < 0 || y < 0 || x > ann.w || y > ann.h);
+      if (!out) return p;
+      changed = true;
+      return Object.assign({}, p, { points: clipToImage(p.points, ann.w, ann.h) });
+    }).filter((p) => p.points.length >= 3);
+    return changed;
+  }
   function stats(ann) {
     let area = 0, per = 0, nHoles = 0;
     for (const p of ann.polygons) {
@@ -114,7 +147,7 @@
     return new Promise((resolve, reject) => {
       if (im.img) return resolve(im.img);
       const img = new Image();
-      img.onload = () => { im.img = img; im.w = img.naturalWidth; im.h = img.naturalHeight; const a = annotations[im.key]; a.w = im.w; a.h = im.h; resolve(img); };
+      img.onload = () => { im.img = img; im.w = img.naturalWidth; im.h = img.naturalHeight; const a = annotations[im.key]; a.w = im.w; a.h = im.h; if (clipAnnotation(a)) save(); resolve(img); };
       img.onerror = reject;
       img.src = im.url;
     });
@@ -172,7 +205,7 @@
     if (!drawing || drawing.pts.length < 3) return;
     pushUndo();
     const polys = annotations[images[cur].key].polygons;
-    polys.push({ label: settings.label || "organism", hole: false, points: drawing.pts.map(([x, y]) => [round3(x), round3(y)]) });
+    polys.push({ label: settings.label || "organism", hole: false, points: clipToImage(drawing.pts.map(([x, y]) => [round3(x), round3(y)]), images[cur].w, images[cur].h) });
     selected = polys.length - 1;
     drawing = null;
     changed();
@@ -345,7 +378,7 @@
         if (Math.hypot(fx - sx, fy - sy) <= HIT_PX) return closeDrawing();
       }
       if (!drawing) { drawing = { pts: [] }; selected = -1; }
-      drawing.pts.push([ix, iy]);
+      drawing.pts.push(clampPt([ix, iy], images[cur].w, images[cur].h));
       if (e.shiftKey) drag = { kind: "free", lx: sx, ly: sy };
       draw();
     } else {
@@ -371,10 +404,11 @@
     if (!drag) return draw();
     if (drag.kind === "pan") { view.tx = drag.tx + sx - drag.sx; view.ty = drag.ty + sy - drag.sy; }
     else if (drag.kind === "free") {
-      if (Math.hypot(sx - drag.lx, sy - drag.ly) >= FREEHAND_STEP) { drawing.pts.push(toImg(sx, sy)); drag.lx = sx; drag.ly = sy; }
+      if (Math.hypot(sx - drag.lx, sy - drag.ly) >= FREEHAND_STEP) { drawing.pts.push(clampPt(toImg(sx, sy), images[cur].w, images[cur].h)); drag.lx = sx; drag.ly = sy; }
     } else if (drag.kind === "vertex") {
       const [ix, iy] = toImg(sx, sy);
-      annotations[images[cur].key].polygons[drag.pi].points[drag.vi] = [round3(ix), round3(iy)];
+      const [cx, cy] = clampPt([ix, iy], images[cur].w, images[cur].h);
+      annotations[images[cur].key].polygons[drag.pi].points[drag.vi] = [round3(cx), round3(cy)];
     }
     draw();
   });
@@ -470,6 +504,7 @@
   }
   function exportObject(maskCounts) {
     flushTime();
+    for (const a of Object.values(annotations)) clipAnnotation(a);
     const keys = images.length ? images.map((im) => im.key) : Object.keys(annotations);
     return {
       tool: TOOL, exported: new Date().toISOString(), annotator: settings.annotator,
@@ -542,6 +577,7 @@
       }
       if (obj.um_per_px) { settings.umpp = obj.um_per_px; $("umpp").value = obj.um_per_px; }
       if (obj.annotator && !settings.annotator) { settings.annotator = obj.annotator; $("annotator").value = obj.annotator; }
+      for (const a of Object.values(annotations)) clipAnnotation(a);
       changed();
       alert(`Imported annotations for ${n} images.`);
     } catch (err) { alert("Could not read JSON: " + err.message); }
