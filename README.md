@@ -20,13 +20,39 @@ Images never leave your computer: they're opened with the browser's File API and
 - Vertices are stored in continuous image-pixel coordinates; pixel *(i, j)* covers [i, i+1) × [j, j+1), origin top-left.
 - `area_px_polygon`: exact shoelace area of all non-hole polygons minus hole polygons. Overlapping non-hole polygons are counted twice, so don't overlap them.
 - `area_px_mask`: number of foreground pixels in the exported binary mask (rasterised at 50 % pixel coverage). It's comparable with pixel-count areas from segmentation pipelines.
+- `area_px_by_label`: net polygon area for each polygon label (e.g. `body=2000;appendage=300` in the CSV).
 - `area_mm2_* = area_px × (µm/px)² / 10⁶`.
 
-## Keyboard
-`D` draw · `E` edit · `Enter` close polygon · `Backspace` remove last vertex · `Esc` cancel · `H` hole · `Del` delete · `F` fit · `←/→` previous/next · `X` unusable · `Ctrl/⌘+Z` undo · `?` help.
+## Keyboard and mouse
+
+| Action | Shortcut |
+|---|---|
+| Draw mode | `D` |
+| Edit mode | `E` |
+| Add a vertex | Click (draw mode) |
+| Trace freehand | `Shift` + drag (draw mode) |
+| Close polygon | Click the first vertex, double-click, or `Enter` |
+| Remove last vertex while drawing | `Backspace` |
+| Cancel polygon / deselect | `Esc` |
+| Select polygon | Click it (edit mode) |
+| Move vertex | Drag it (edit mode) |
+| Insert vertex | Double-click an edge (edit mode) |
+| Delete vertex | `Alt` + click it (edit mode) |
+| Toggle hole on selected polygon | `H` |
+| Delete selected polygon | `Del` (or `Backspace` when not drawing) |
+| Undo / redo | `Ctrl/⌘ + Z` / `Ctrl/⌘ + Shift + Z` (or `Ctrl/⌘ + Y`) |
+| Zoom at cursor | Mouse wheel |
+| Pan | `Space` + drag, or right/middle-button drag |
+| Fit image to window | `F` |
+| Previous / next image | `←` / `→` (or `P` / `N`) |
+| Mark image unusable (with reason) | `X` |
+| Help | `?` |
 
 ## Deploy
 Static files only (`index.html`, `app.js`, `zip.js`, `style.css`). Any static host works: GitHub Pages (Settings → Pages → branch `main`, root), Vercel, Netlify, or a local `python3 -m http.server`.
+
+## Contributing
+Bug reports, feature requests and pull requests are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for how to report a problem and the few rules that keep the tool dependency-free.
 
 ## Citation
 If you use this tool, please cite it using `CITATION.cff` (Zenodo DOI).
