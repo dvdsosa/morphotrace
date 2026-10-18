@@ -58,6 +58,7 @@ Images never leave your computer: they're opened with the browser's File API and
 | Fit the image to the window | `F` or `0`, or click the zoom % |
 | Actual pixels (100 %) | `1`, or double-click the zoom % |
 | Previous / next image | `←` / `→` (or `P` / `N`) |
+| Go to an image number | `G`, or click the `20 / 120` counter between Prev and Next |
 | Mark image unusable (with reason) | `X` |
 | Help | `?` |
 

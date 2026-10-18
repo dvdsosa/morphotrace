@@ -6,7 +6,7 @@
 <title>MorphoTrace</title>
 <meta name="description" content="Browser-based polygon annotation tool for projected-area ground truth. Images never leave your computer.">
 <script>try { const t = localStorage.getItem("morphotrace.theme"); if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; } catch (e) {}</script>
-<link rel="stylesheet" href="style.css?v=0.2.4">
+<link rel="stylesheet" href="style.css?v=0.2.5">
 </head>
 <body>
 <header class="topbar">
@@ -98,6 +98,7 @@
         <button class="btn" id="skipBtn" title="Mark this image as unusable, with a reason (X)">Mark unusable</button>
         <div class="seg nav-group" role="group" aria-label="Image navigation">
           <button class="btn seg-btn" id="prevBtn" title="Previous image (←)">◀ Prev</button>
+          <button class="btn seg-btn nav-pos" id="navPos" title="Current image / total. Click to go to an image number (G)">– / –</button>
           <button class="btn seg-btn" id="nextBtn" title="Next image (→)">Next ▶</button>
         </div>
       </div>
@@ -152,7 +153,7 @@
         <li><kbd>F</kbd> or <kbd>0</kbd> (or click the zoom %): fit to window · <kbd>1</kbd> (or double-click it): 100%</li>
         <li>Wheel (vertical / horizontal): scroll the image</li>
         <li><kbd>Space</kbd>+drag or right-drag: pan</li>
-        <li><kbd>←</kbd>/<kbd>→</kbd> previous / next image</li>
+        <li><kbd>←</kbd>/<kbd>→</kbd> previous / next image · <kbd>G</kbd> (or click the counter) go to image number</li>
         <li><kbd>X</kbd> mark image unusable (with reason)</li>
       </ul>
       <h3>Measurement</h3>
@@ -164,7 +165,7 @@
 </dialog>
 
 <script src="vendor/polygon-clipping-0.15.7.umd.min.js"></script>
-<script src="zip.js?v=0.2.4"></script>
-<script src="app.js?v=0.2.4"></script>
+<script src="zip.js?v=0.2.5"></script>
+<script src="app.js?v=0.2.5"></script>
 </body>
 </html>

@@ -3,7 +3,7 @@
 (function () {
   "use strict";
 
-  const TOOL = { name: "MorphoTrace", version: "0.2.4" };
+  const TOOL = { name: "MorphoTrace", version: "0.2.5" };
   const STORE_KEY = "morphotrace.v1";
   const HIT_PX = 8;          // screen-space hit tolerance
   const FREEHAND_STEP = 3;   // screen px between freehand samples
@@ -452,6 +452,7 @@
       : (selected >= 0 ? "EDIT · drag vertices · double-click a line to add a vertex · right-click a highlighted vertex to delete it · Del deletes the polygon" : "EDIT · click an area to select it");
     if (performance.now() >= flashUntil) $("stHint").textContent = hint;
     $("zoomPct").textContent = `${Math.round(view.s * 100)}%`;
+    $("navPos").textContent = `${cur + 1} / ${images.length}`;
     $("modeDraw").classList.toggle("active", mode === "draw");
     $("modeSub").classList.toggle("active", mode === "subtract"); $("modeSub").classList.toggle("danger", mode === "subtract");
     $("modeEdit").classList.toggle("active", mode === "edit");
@@ -611,6 +612,7 @@
       case "+": case "=": zoomCentre(1.25); break;
       case "-": case "_": zoomCentre(1 / 1.25); break;
       case "x": case "X": toggleSkip(); break;
+      case "g": case "G": goToNumber(); break;
       case "ArrowRight": case "n": case "N": go(cur + 1); break;
       case "ArrowLeft": case "p": case "P": go(cur - 1); break;
       case "?": $("help").showModal(); break;
@@ -758,6 +760,14 @@
   $("skipBtn").onclick = toggleSkip;
   $("prevBtn").onclick = () => go(cur - 1);
   $("nextBtn").onclick = () => go(cur + 1);
+  function goToNumber() {
+    if (!images.length) return;
+    const v = prompt(`Go to image number (1–${images.length}):`, String(cur + 1));
+    if (v === null) return;
+    const n = parseInt(v, 10);
+    if (Number.isFinite(n) && n >= 1 && n <= images.length) go(n - 1);
+  }
+  $("navPos").onclick = goToNumber;
   $("helpBtn").onclick = () => $("help").showModal();
   $("mergePolys").addEventListener("change", (e) => { settings.merge = e.target.checked; save(); });
   for (const id of ["annotator", "umpp", "label"]) {
