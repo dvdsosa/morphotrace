@@ -37,7 +37,7 @@ Images never leave your computer: they're opened with the browser's File API and
 | Select polygon | Click it (edit mode) |
 | Move vertex | Drag it (edit mode) |
 | Insert vertex | Double-click an edge (edit mode) |
-| Delete vertex | `Alt` + click it (edit mode) |
+| Delete vertex | Hover it until it grows, then right-click (or `Alt` + click) (edit mode); its neighbours are joined |
 | Toggle hole on selected polygon | `H` |
 | Delete selected polygon | `Del` (or `Backspace` when not drawing) |
 | Undo / redo | `Ctrl/⌘ + Z` / `Ctrl/⌘ + Shift + Z` (or `Ctrl/⌘ + Y`) |

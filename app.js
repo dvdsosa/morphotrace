@@ -3,7 +3,7 @@
 (function () {
   "use strict";
 
-  const TOOL = { name: "MorphoTrace", version: "0.1.5" };
+  const TOOL = { name: "MorphoTrace", version: "0.1.6" };
   const STORE_KEY = "morphotrace.v1";
   const HIT_PX = 8;          // screen-space hit tolerance
   const FREEHAND_STEP = 3;   // screen px between freehand samples
@@ -23,6 +23,7 @@
   let display = { bright: 100, contr: 100, invert: false, fill: true };
   let pointer = { x: 0, y: 0, inside: false };
   let drag = null;                 // {kind: 'pan'|'vertex'|'free', ...}
+  let hoverV = null;               // {pi, vi}: vertex under the cursor in edit mode
   let spaceDown = false;
   let shownAt = 0;
   const undoStacks = {}, redoStacks = {};
@@ -302,7 +303,7 @@
       ctx.lineWidth = i === selected ? 2 : 1.5; ctx.strokeStyle = col;
       if (p.hole) ctx.setLineDash([5, 4]);
       ctx.stroke(); ctx.setLineDash([]);
-      if (mode === "edit" && (i === selected || selected < 0)) drawVertices(p.points, col);
+      if (mode === "edit" && (i === selected || selected < 0)) drawVertices(p.points, col, hoverV && hoverV.pi === i ? hoverV.vi : -1);
     });
 
     if (drawing && drawing.pts.length) {
@@ -320,13 +321,29 @@
     }
     updateStatus();
   }
-  function drawVertices(pts, col) {
+  function drawVertices(pts, col, hi = -1) {
     const step = pts.length > 400 && view.s < 3 ? Math.ceil(pts.length / 400) : 1;
     ctx.fillStyle = col;
     for (let i = 0; i < pts.length; i += step) {
       const [sx, sy] = toScr(pts[i][0], pts[i][1]);
       ctx.fillRect(sx - 2.5, sy - 2.5, 5, 5);
     }
+    if (hi >= 0 && hi < pts.length) {
+      // hovered vertex: larger square with a white outline (right-click or Alt+click deletes it)
+      const [sx, sy] = toScr(pts[hi][0], pts[hi][1]);
+      ctx.fillRect(sx - 6, sy - 6, 12, 12);
+      ctx.lineWidth = 2; ctx.strokeStyle = "#ffffff"; ctx.strokeRect(sx - 6, sy - 6, 12, 12);
+    }
+  }
+  function deleteVertex(pi, vi) {
+    const pts = annotations[images[cur].key].polygons[pi].points;
+    if (pts.length <= 3) { flash("A polygon needs at least 3 vertices; delete the polygon instead (Del)."); return; }
+    pushUndo(); pts.splice(vi, 1); hoverV = null; changed();
+  }
+  let flashTimer = 0;
+  function flash(msg) {
+    $("stHint").textContent = msg; $("stHint").style.color = "#e0a030";
+    clearTimeout(flashTimer); flashTimer = setTimeout(() => { $("stHint").style.color = ""; draw(); }, 2500);
   }
   function updateStatus() {
     if (cur < 0) { $("stFile").textContent = "—"; $("stArea").textContent = "Area: —"; $("stHint").textContent = ""; $("clsChip").textContent = ""; return; }
@@ -341,7 +358,7 @@
     }
     $("stHint").textContent = mode === "draw"
       ? (drawing ? `${drawing.pts.length} vertices · click first vertex / Enter to close · right-click or Backspace: undo vertex · Esc cancel` : "Click to start a polygon · Shift+drag to trace")
-      : (selected >= 0 ? "Drag vertices · double-click edge to insert · Alt+click vertex to delete · H hole · Del delete" : "Click a polygon to select it");
+      : (selected >= 0 ? "Drag vertices · double-click edge to insert · right-click (or Alt+click) a highlighted vertex to delete it · H hole · Del delete polygon" : "Click a polygon to select it");
     $("modeDraw").classList.toggle("active", mode === "draw");
     $("modeEdit").classList.toggle("active", mode === "edit");
   }
@@ -386,10 +403,7 @@
       if (hv) {
         const polys = annotations[images[cur].key].polygons;
         selected = hv.pi;
-        if (e.altKey) {
-          if (polys[hv.pi].points.length > 3) { pushUndo(); polys[hv.pi].points.splice(hv.vi, 1); changed(); }
-          return;
-        }
+        if (e.altKey) { deleteVertex(hv.pi, hv.vi); return; }
         pushUndo();
         drag = { kind: "vertex", pi: hv.pi, vi: hv.vi };
       } else {
@@ -401,7 +415,12 @@
   cv.addEventListener("pointermove", (e) => {
     const [sx, sy] = localXY(e);
     pointer = { x: sx, y: sy, inside: true };
-    if (!drag) return draw();
+    if (!drag) {
+      const hv = mode === "edit" && cur >= 0 ? (hitVertex(sx, sy, selected) || hitVertex(sx, sy, -1)) : null;
+      hoverV = hv;
+      cv.style.cursor = hv ? "pointer" : "";
+      return draw();
+    }
     if (drag.kind === "pan") {
       if (Math.hypot(sx - drag.sx, sy - drag.sy) > 4) drag.moved = true;
       view.tx = drag.tx + sx - drag.sx; view.ty = drag.ty + sy - drag.sy;
@@ -420,10 +439,13 @@
     // a right-click without dragging removes the last vertex of the polygon being drawn (right-drag still pans)
     if (drag && drag.kind === "pan" && drag.button === 2 && !drag.moved && drawing) {
       drawing.pts.pop(); if (!drawing.pts.length) drawing = null; draw();
+    } else if (drag && drag.kind === "pan" && drag.button === 2 && !drag.moved && mode === "edit" && hoverV) {
+      // right-click on the highlighted vertex of a closed polygon deletes it; its neighbours are joined
+      deleteVertex(hoverV.pi, hoverV.vi);
     }
     drag = null;
   });
-  cv.addEventListener("pointerleave", () => { pointer.inside = false; draw(); });
+  cv.addEventListener("pointerleave", () => { pointer.inside = false; hoverV = null; draw(); });
   cv.addEventListener("dblclick", (e) => {
     if (cur < 0) return;
     const [sx, sy] = localXY(e);
