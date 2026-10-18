@@ -41,7 +41,7 @@ It needs Node ≥ 18, Python 3 and [playwright-cli](https://github.com/microsoft
 | Check | What it covers |
 |---|---|
 | version consistency | `app.js`, `CITATION.cff` and the `?v=` cache-busting parameters in `index.html` carry the same version |
-| `tests/geometry.test.js` | areas, clipping, merge/subtract, masks and CSV in `geometry.js`, with seeded property tests (`node --test tests/`) |
+| `tests/geometry.test.js` | areas, clipping, merge/subtract, masks and CSV in `geometry.js`, with seeded property tests (`node --test tests/*.test.js`) |
 | ESLint, html-validate | `eslint.config.js` and `.htmlvalidate.json` |
 | `tests/e2e/core.e2e.js` | drawing, editing, undo/redo, zoom, navigation, display adjustments, exports (mask PNG decoded), import, persistence |
 | `tests/e2e/storage.e2e.js` | autosave failures (full, blocked, unreadable storage) are reported, never silent |
@@ -60,7 +60,10 @@ It recomputes every area with shapely, rasterises a pixel-centre mask and flags 
 
 ## Releasing a version
 
-Bump the version in `app.js` (`TOOL.version`), `CITATION.cff` and every `?v=` in `index.html` together; `tests/run-all.sh` fails if they differ. The header and the help dialog show `TOOL.version`, and every export records it.
+1. Bump the version in `app.js` (`TOOL.version`), `CITATION.cff` (also `date-released`) and every `?v=` in `index.html` together; `tests/run-all.sh` fails if they differ. The header and the help dialog show `TOOL.version`, and every export records it.
+2. Add the changes to `CHANGELOG.md`.
+3. Run `tests/run-all.sh`, push, and wait for the GitHub Actions run to pass.
+4. Tag and publish the release: `git tag -a vX.Y.Z -m "MorphoTrace X.Y.Z" && git push origin vX.Y.Z`, then `gh release create vX.Y.Z --notes-file <notes>` with that version's CHANGELOG section. Once Zenodo is connected, each published release gets a DOI.
 
 ## Manual test checklist
 

@@ -22,14 +22,16 @@ echo "app.js $V_APP · CITATION.cff $V_CFF · index.html $V_HTML"
 [ "$V_APP" = "$V_CFF" ] && [ "$V_HTML" = "?v=$V_APP " ] || bad "versions differ (bump all three together; index.html ?v= busts browser caches)"
 
 step "unit tests"
-(cd "$ROOT" && node --test tests/) >/tmp/morphotrace-unit.$$ 2>&1 && grep -E '^ℹ (pass|fail)' /tmp/morphotrace-unit.$$ || { cat /tmp/morphotrace-unit.$$; bad "unit tests"; }
+# spec reporter everywhere (Node 22 defaults to TAP when the output is not a terminal)
+if (cd "$ROOT" && node --test --test-reporter=spec tests/*.test.js) >/tmp/morphotrace-unit.$$ 2>&1; then grep -E '^ℹ (pass|fail|todo)' /tmp/morphotrace-unit.$$
+else cat /tmp/morphotrace-unit.$$; bad "unit tests"; fi
 rm -f /tmp/morphotrace-unit.$$
 
 step "ESLint"
-(cd "$ROOT" && npx --yes eslint@9.39.1 .) && echo "clean" || bad "eslint"
+(cd "$ROOT" && npx --yes eslint@10.12.0 .) && echo "clean" || bad "eslint"
 
 step "HTML validation"
-(cd "$ROOT" && npx --yes html-validate@9.5.5 index.html) && echo "clean" || bad "html-validate"
+(cd "$ROOT" && npx --yes html-validate@11.16.1 index.html) && echo "clean" || bad "html-validate"
 
 step "browser tests"
 PORT=$((20000 + RANDOM % 20000))

@@ -4,5 +4,5 @@
   "license": "MIT",
   "creators": [{"name": "Sosa-Trejo, David", "orcid": "0000-0002-6337-8698", "affiliation": "Universidad de Las Palmas de Gran Canaria (IOCAG) / University of Málaga"}],
   "keywords": ["image annotation", "polygon", "segmentation ground truth", "biometry", "plankton"],
-  "description": "Dependency-free, client-side web tool to annotate object outlines as polygons (with holes) and export exact projected areas, binary masks and per-image CSV. Images are processed locally and never uploaded. Developed with AI coding assistance (Claude, Anthropic)."
+  "description": "Dependency-free, client-side web tool to outline organisms in images as polygons (with holes) and export their exact projected areas in px² and mm², binary masks and per-image CSV, as manual reference measurements (ground truth) for plankton biometry and other scientific imaging. Images are processed locally and never uploaded. Tested in Chromium, Firefox and WebKit. Developed with AI coding assistance (Claude, Anthropic)."
 }

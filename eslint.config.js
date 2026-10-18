@@ -1,4 +1,4 @@
-// ESLint flat config with no imports, so it runs without a package.json:  npx eslint@9.39.1 .
+// ESLint flat config with no imports, so it runs without a package.json:  npx eslint@10.12.0 .
 // Rules are eslint:recommended's error-catching core plus a few for clarity; globals are listed by hand.
 const browser = Object.fromEntries(["window", "document", "navigator", "localStorage", "sessionStorage", "performance",
   "setTimeout", "clearTimeout", "requestAnimationFrame", "getComputedStyle", "matchMedia", "ResizeObserver", "URL", "Blob", "File",

@@ -3,7 +3,7 @@
 (function () {
   "use strict";
 
-  const TOOL = { name: "MorphoTrace", version: "0.3.5" };
+  const TOOL = { name: "MorphoTrace", version: "0.4.0" };
   const STORE_KEY = "morphotrace.v1";
   // single source of the version: shown in the header and help, and written into every export
   for (const id of ["appVersion", "helpVersion"]) { const el = document.getElementById(id); if (el) el.textContent = "v" + TOOL.version; }
@@ -114,12 +114,28 @@
       const key = f.webkitRelativePath || f.name;
       if (images.some((im) => im.key === key)) continue;
       const parts = key.split("/");
-      images.push({ key, name: f.name, cls: parts.length > 1 ? parts[parts.length - 2] : "", url: URL.createObjectURL(f), img: null, w: 0, h: 0 });
+      images.push({ key, name: f.name, cls: parts.length > 1 ? parts[parts.length - 2] : "", file: f, url: URL.createObjectURL(f), img: null, w: 0, h: 0 });
       annFor(key, f.name);
     }
     renderList();
     if (cur < 0 && images.length) go(0);
     save();
+    readSizes();
+  }
+  // Image sizes are read in the background as soon as files are added (each image is decoded and released
+  // at once), so exports give width and height also for images not opened yet.
+  let sizing = Promise.resolve();
+  function readSizes() {
+    sizing = sizing.then(async () => {
+      for (const im of images) {
+        if (im.w) continue;
+        try { const bmp = await createImageBitmap(im.file); im.w = bmp.width; im.h = bmp.height; bmp.close(); }
+        catch (e) { continue; } // not decodable here (e.g. TIFF): size stays unknown until opened, if ever
+        const a = annotations[im.key];
+        if (!a.w) { a.w = im.w; a.h = im.h; if (clipAnnotation(a)) save(); }
+      }
+    });
+    return sizing;
   }
   function ensureImage(im) {
     return new Promise((resolve, reject) => {
@@ -642,9 +658,10 @@
     document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
   }
   const stamp = () => new Date().toISOString().slice(0, 16).replace(/[:T]/g, "-");
-  $("exportJson").onclick = () => { download(new Blob([JSON.stringify(exportObject(), null, 1)], { type: "application/json" }), `annotations_${stamp()}.json`); unexported = false; };
-  $("exportCsv").onclick = () => download(new Blob([toCsv(exportObject())], { type: "text/csv" }), `areas_${stamp()}.csv`);
+  $("exportJson").onclick = async () => { await readSizes(); download(new Blob([JSON.stringify(exportObject(), null, 1)], { type: "application/json" }), `annotations_${stamp()}.json`); unexported = false; };
+  $("exportCsv").onclick = async () => { await readSizes(); download(new Blob([toCsv(exportObject())], { type: "text/csv" }), `areas_${stamp()}.csv`); };
   $("exportZip").onclick = async () => {
+    await readSizes();
     const z = new ZipWriter(), counts = {};
     for (const [k, a] of Object.entries(annotations)) {
       if (a.skip || !a.polygons.length || !a.w) continue;

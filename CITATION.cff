@@ -1,8 +1,13 @@
 cff-version: 1.2.0
 message: "If you use this software, please cite it as below."
 title: "MorphoTrace: a browser-based polygon annotation tool for projected-area ground truth"
-version: 0.3.5
-date-released: 2026-10-16
+type: software
+abstract: >-
+  Browser-based tool to outline organisms in images as polygons (with holes) and export their exact
+  projected areas in px² and mm², binary masks and per-image CSV, as manual reference measurements for
+  plankton biometry and other scientific imaging. Runs offline; images are never uploaded.
+version: 0.4.0
+date-released: 2026-10-18
 license: MIT
 repository-code: "https://github.com/dvdsosa/morphotrace"
 url: "https://dvdsosa.github.io/morphotrace/"

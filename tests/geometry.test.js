@@ -1,4 +1,4 @@
-// Unit and property tests for geometry.js. Run from the repository root with:  node --test tests/
+// Unit and property tests for geometry.js. Run from the repository root with:  node --test tests/*.test.js
 // No dependencies: node:test, node:assert and the vendored polygon-clipping build.
 "use strict";
 const test = require("node:test");

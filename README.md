@@ -129,7 +129,7 @@ The autosave lives in this browser on this computer only. If it cannot save (bro
 | Mark the image unusable | `X` |
 | Help | `?` |
 
-The same list is under **?** in the tool.
+The same list is in the tool's help: the **?** button at the top right of the window (or press `?`).
 
 ## Questions
 
@@ -147,12 +147,11 @@ The same list is under **?** in the tool.
 - `area_mm2_* = area_px × (µm/px)² / 10⁶`.
 - An outline that crosses itself is split into simple pieces when it is closed.
 
-Versions before 0.3.0 summed overlapping outlines twice and produced masks about 1–2 % too large; see the [commit history](https://github.com/dvdsosa/morphotrace/commits/main) for details.
-
 ## For developers
 
 Plain HTML, CSS and JavaScript with no build step and no package manager, so the tool runs offline from `index.html` and is archived on Zenodo as-is. Any static host serves it (GitHub Pages: Settings → Pages → branch `main`, root). Third-party code is listed in [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).
 
+- **Changes:** see [CHANGELOG.md](CHANGELOG.md) and the [releases](https://github.com/dvdsosa/morphotrace/releases).
 - **Tests:** `tests/run-all.sh` runs unit, lint, HTML, accessibility and browser tests in Chromium, Firefox and WebKit; see [CONTRIBUTING.md](CONTRIBUTING.md).
 - **README media:** the images on this page are synthetic and generated with `docs/media/build.sh` (needs uv, ffmpeg and playwright-cli). Re-run it after interface changes.
 

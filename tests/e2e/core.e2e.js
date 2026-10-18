@@ -226,6 +226,8 @@ async (page) => {
 
   // ---------- 17. import JSON into a fresh session ----------
   await fresh(); await dropFixtures();
+  const early = JSON.parse((await download("#exportJson")).text()).images.find((r) => r.file === "b_120x90.png");
+  check("export gives the size of images not opened yet", early?.width === 120 && early?.height === 90, `${early?.width}×${early?.height}`);
   await page.evaluate(() => { window.__alert = ""; window.alert = (m) => { window.__alert = String(m); }; });
   await page.evaluate((txt) => {
     const dt = new DataTransfer(); dt.items.add(new File([txt], "annotations.json", { type: "application/json" }));
