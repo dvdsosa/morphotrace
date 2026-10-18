@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>MorphoTrace</title>
 <meta name="description" content="Browser-based polygon annotation tool for projected-area ground truth. Images never leave your computer.">
-<link rel="stylesheet" href="style.css?v=0.1.6">
+<link rel="stylesheet" href="style.css?v=0.1.7">
 </head>
 <body>
 <header class="topbar">
@@ -99,7 +99,7 @@
       <ul>
         <li>Click a polygon to select it</li>
         <li>Drag a vertex to move it</li>
-        <li>Double-click an edge to insert a vertex</li>
+        <li>Double-click a contour line to split it with a new vertex at that spot</li>
         <li>Hover a vertex (it grows) and right-click, or <kbd>Alt</kbd>+click, to delete it; its neighbours are joined</li>
         <li><kbd>H</kbd> toggle hole · <kbd>Del</kbd> delete polygon</li>
       </ul>
@@ -121,7 +121,7 @@
   <form method="dialog"><button class="btn primary">Close</button></form>
 </dialog>
 
-<script src="zip.js?v=0.1.6"></script>
-<script src="app.js?v=0.1.6"></script>
+<script src="zip.js?v=0.1.7"></script>
+<script src="app.js?v=0.1.7"></script>
 </body>
 </html>

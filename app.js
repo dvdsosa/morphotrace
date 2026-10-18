@@ -3,7 +3,7 @@
 (function () {
   "use strict";
 
-  const TOOL = { name: "MorphoTrace", version: "0.1.6" };
+  const TOOL = { name: "MorphoTrace", version: "0.1.7" };
   const STORE_KEY = "morphotrace.v1";
   const HIT_PX = 8;          // screen-space hit tolerance
   const FREEHAND_STEP = 3;   // screen px between freehand samples
@@ -247,6 +247,28 @@
     }
     return null;
   }
+  // nearest polygon edge within HIT_PX (selected polygon first); returns {pi, i, x, y} with (x, y) the
+  // projection of the cursor onto that edge in image coordinates
+  function hitEdge(sx, sy) {
+    const polys = annotations[images[cur].key].polygons;
+    const order = selected >= 0 ? [selected, ...polys.map((_, i) => i).filter((i) => i !== selected)] : polys.map((_, i) => i).reverse();
+    for (const pi of order) {
+      const pts = polys[pi].points;
+      let best = -1, bd = HIT_PX, bt = 0;
+      for (let i = 0; i < pts.length; i++) {
+        const [x1, y1] = toScr(...pts[i]), [x2, y2] = toScr(...pts[(i + 1) % pts.length]);
+        const dx = x2 - x1, dy = y2 - y1, l2 = dx * dx + dy * dy;
+        const t = l2 ? Math.max(0, Math.min(1, ((sx - x1) * dx + (sy - y1) * dy) / l2)) : 0;
+        const d = Math.hypot(sx - (x1 + t * dx), sy - (y1 + t * dy));
+        if (d < bd) { bd = d; best = i; bt = t; }
+      }
+      if (best >= 0) {
+        const [ax, ay] = pts[best], [bx, by] = pts[(best + 1) % pts.length];
+        return { pi, i: best, x: ax + bt * (bx - ax), y: ay + bt * (by - ay) };
+      }
+    }
+    return null;
+  }
   function hitPoly(ix, iy) {
     const polys = annotations[images[cur].key].polygons;
     let best = -1, bestA = Infinity;
@@ -407,7 +429,8 @@
         pushUndo();
         drag = { kind: "vertex", pi: hv.pi, vi: hv.vi };
       } else {
-        selected = hitPoly(ix, iy);
+        const he = hitEdge(sx, sy);
+        selected = he ? he.pi : hitPoly(ix, iy);
       }
       draw();
     }
@@ -458,14 +481,16 @@
       }
       return closeDrawing();
     }
-    if (mode === "edit" && selected >= 0) {
-      const pts = annotations[images[cur].key].polygons[selected].points;
-      let best = -1, bd = HIT_PX;
-      for (let i = 0; i < pts.length; i++) {
-        const d = distToSeg(sx, sy, toScr(...pts[i]), toScr(...pts[(i + 1) % pts.length]));
-        if (d < bd) { bd = d; best = i; }
+    if (mode === "edit") {
+      if (hitVertex(sx, sy, -1)) return;            // double-click on an existing vertex: nothing to split
+      const he = hitEdge(sx, sy);
+      if (he) {
+        // split the edge at the clicked spot: the new vertex sits exactly on the line between its neighbours
+        pushUndo();
+        annotations[images[cur].key].polygons[he.pi].points.splice(he.i + 1, 0, [round3(he.x), round3(he.y)]);
+        selected = he.pi; hoverV = { pi: he.pi, vi: he.i + 1 };
+        changed();
       }
-      if (best >= 0) { pushUndo(); const [ix, iy] = toImg(sx, sy); pts.splice(best + 1, 0, [round3(ix), round3(iy)]); changed(); }
     }
   });
   cv.addEventListener("wheel", (e) => {
