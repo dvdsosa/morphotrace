@@ -21,7 +21,7 @@ Please do not attach images you are not allowed to share. MorphoTrace never uplo
 
 ## Design rules
 
-- **No dependencies and no build step.** The tool is plain HTML, CSS and JavaScript, so it can be opened offline from `index.html` and archived on Zenodo as-is.
+- **No build step and no package manager.** The tool is plain HTML, CSS and JavaScript, so it can be opened offline from `index.html` and archived on Zenodo as-is. Third-party code is allowed only as a single vendored, permissively licensed file under `vendor/`, listed in `THIRD_PARTY_NOTICES.md`.
 - **Images stay local.** Never add code that sends images or annotations over the network.
 - **Measurements must not change silently.** Any change to how areas, masks or exports are computed needs a note in the README ("Measurement definitions") and a version bump, because published results may depend on them.
 - **Backward-compatible exports.** Older `annotations.json` files must still import.

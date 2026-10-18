@@ -8,6 +8,7 @@ Images never leave your computer: they're opened with the browser's File API and
 
 ## Features
 - Polygon drawing by clicks, freehand tracing (Shift + drag), multiple polygons per image, holes (subtracted).
+- Automatic merging: a new polygon closed over an existing one is fused with it (boolean union), so an outline can be extended piece by piece. Can be switched off.
 - Vertex editing: drag, insert (double-click an edge), delete (Alt + click); undo/redo.
 - Zoom at cursor (Shift + wheel), scroll with the wheel, pan, nearest-neighbour rendering at high zoom for pixel-level work.
 - Display-only brightness/contrast/invert to see translucent boundaries (never alters exported data).
@@ -50,7 +51,7 @@ Images never leave your computer: they're opened with the browser's File API and
 | Help | `?` |
 
 ## Deploy
-Static files only (`index.html`, `app.js`, `zip.js`, `style.css`). Any static host works: GitHub Pages (Settings → Pages → branch `main`, root), Vercel, Netlify, or a local `python3 -m http.server`.
+Static files only (`index.html`, `app.js`, `zip.js`, `style.css`, `vendor/`). Third-party code is listed in `THIRD_PARTY_NOTICES.md`. Any static host works: GitHub Pages (Settings → Pages → branch `main`, root), Vercel, Netlify, or a local `python3 -m http.server`.
 
 ## Contributing
 Bug reports, feature requests and pull requests are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for how to report a problem and the few rules that keep the tool dependency-free.

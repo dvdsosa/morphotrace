@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>MorphoTrace</title>
 <meta name="description" content="Browser-based polygon annotation tool for projected-area ground truth. Images never leave your computer.">
-<link rel="stylesheet" href="style.css?v=0.1.7">
+<link rel="stylesheet" href="style.css?v=0.1.8">
 </head>
 <body>
 <header class="topbar">
@@ -36,6 +36,7 @@
       <label class="field">Annotator ID<input id="annotator" type="text" placeholder="e.g. DST"></label>
       <label class="field">Scale (µm / pixel)<input id="umpp" type="number" step="0.01" min="0" value="7.38"></label>
       <label class="field" title="Name of the part you outline (e.g. organism, body, appendage). It is not the class: the class is taken from the image folder.">Part label<input id="label" type="text" value="organism"></label>
+      <label class="check" title="When a new polygon overlaps an existing one, merge them into a single outline"><input id="mergePolys" type="checkbox" checked> Merge overlapping polygons</label>
     </section>
     <section class="panel">
       <h2>Display <small>(view only, not saved)</small></h2>
@@ -92,7 +93,7 @@
       <ul>
         <li><kbd>Click</kbd> add a vertex</li>
         <li><kbd>Shift</kbd>+drag trace freehand</li>
-        <li>Click the first vertex, <kbd>Enter</kbd> or double-click to close</li>
+        <li>Click the first vertex, <kbd>Enter</kbd> or double-click to close; a polygon closed over an existing one is merged into it</li>
         <li>Right-click or <kbd>Backspace</kbd>: remove last vertex · <kbd>Esc</kbd> cancel</li>
       </ul>
       <h3>Edit mode (E)</h3>
@@ -121,7 +122,8 @@
   <form method="dialog"><button class="btn primary">Close</button></form>
 </dialog>
 
-<script src="zip.js?v=0.1.7"></script>
-<script src="app.js?v=0.1.7"></script>
+<script src="vendor/polygon-clipping-0.15.7.umd.min.js"></script>
+<script src="zip.js?v=0.1.8"></script>
+<script src="app.js?v=0.1.8"></script>
 </body>
 </html>

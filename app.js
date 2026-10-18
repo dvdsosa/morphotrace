@@ -3,7 +3,7 @@
 (function () {
   "use strict";
 
-  const TOOL = { name: "MorphoTrace", version: "0.1.7" };
+  const TOOL = { name: "MorphoTrace", version: "0.1.8" };
   const STORE_KEY = "morphotrace.v1";
   const HIT_PX = 8;          // screen-space hit tolerance
   const FREEHAND_STEP = 3;   // screen px between freehand samples
@@ -14,7 +14,7 @@
   // ---------- state ----------
   const images = [];               // {key, name, cls, url, img, w, h}
   let annotations = {};            // key -> {polygons, skip, skipReason, timeMs, w, h}
-  let settings = { annotator: "", umpp: 7.38, label: "organism" };
+  let settings = { annotator: "", umpp: 7.38, label: "organism", merge: true };
   let cur = -1;
   let mode = "draw";
   let drawing = null;              // {pts: [[x,y], ...]}
@@ -206,10 +206,44 @@
     if (!drawing || drawing.pts.length < 3) return;
     pushUndo();
     const polys = annotations[images[cur].key].polygons;
-    polys.push({ label: settings.label || "organism", hole: false, points: clipToImage(drawing.pts.map(([x, y]) => [round3(x), round3(y)]), images[cur].w, images[cur].h) });
-    selected = polys.length - 1;
+    const poly = { label: settings.label || "organism", hole: false, points: clipToImage(drawing.pts.map(([x, y]) => [round3(x), round3(y)]), images[cur].w, images[cur].h) };
     drawing = null;
+    const merged = settings.merge !== false ? mergeOverlapping(polys, poly) : 0;
+    if (!merged) { polys.push(poly); selected = polys.length - 1; }
     changed();
+    if (merged) flash(`Merged with ${merged} overlapping polygon${merged > 1 ? "s" : ""} (Ctrl/⌘+Z to undo).`);
+  }
+  // Boolean union of a newly closed polygon with every existing (non-hole, same-label) polygon it overlaps.
+  // Vertices of the new polygon that fall inside an existing one disappear, and the outside parts are joined
+  // to the existing outline. Enclosed gaps produced by the union become hole polygons. Returns how many
+  // existing polygons were merged (0 = no overlap; the caller then adds the polygon unchanged).
+  function mergeOverlapping(polys, poly) {
+    const PC = window.polygonClipping;
+    if (!PC || poly.points.length < 3) return 0;
+    const ring = (pts) => [...pts, pts[0]];
+    const open = (r) => r.slice(0, -1).map(([x, y]) => [round3(x), round3(y)]);
+    const area = (mp) => mp.reduce((t, pg) => t + pg.reduce((u, r, k) => u + (k ? -1 : 1) * shoelace(r.slice(0, -1)), 0), 0);
+    const hits = [];
+    polys.forEach((q, i) => {
+      if (q.hole || (q.label || "") !== (poly.label || "")) return;
+      try { if (area(PC.intersection([ring(poly.points)], [ring(q.points)])) > 0.5) hits.push(i); } catch (err) { /* degenerate ring: skip */ }
+    });
+    if (!hits.length) return 0;
+    let union;
+    try { union = PC.union([ring(poly.points)], ...hits.map((i) => [ring(polys[i].points)])); }
+    catch (err) { return 0; }
+    for (const i of hits.sort((x, y) => y - x)) polys.splice(i, 1);
+    let first = -1;
+    for (const pg of union) {
+      pg.forEach((r, k) => {
+        const pts = open(r);
+        if (pts.length < 3) return;
+        polys.push({ label: poly.label, hole: k > 0, points: pts });
+        if (first < 0 && k === 0) first = polys.length - 1;
+      });
+    }
+    selected = first;
+    return hits.length;
   }
   const round3 = (v) => Math.round(v * 1000) / 1000;
   function deleteSelected() {
@@ -362,10 +396,11 @@
     if (pts.length <= 3) { flash("A polygon needs at least 3 vertices; delete the polygon instead (Del)."); return; }
     pushUndo(); pts.splice(vi, 1); hoverV = null; changed();
   }
-  let flashTimer = 0;
+  let flashTimer = 0, flashUntil = 0;
   function flash(msg) {
+    flashUntil = performance.now() + 2500;
     $("stHint").textContent = msg; $("stHint").style.color = "#e0a030";
-    clearTimeout(flashTimer); flashTimer = setTimeout(() => { $("stHint").style.color = ""; draw(); }, 2500);
+    clearTimeout(flashTimer); flashTimer = setTimeout(() => { flashUntil = 0; $("stHint").style.color = ""; draw(); }, 2500);
   }
   function updateStatus() {
     if (cur < 0) { $("stFile").textContent = "—"; $("stArea").textContent = "Area: —"; $("stHint").textContent = ""; $("clsChip").textContent = ""; return; }
@@ -378,7 +413,7 @@
       const [ix, iy] = toImg(pointer.x, pointer.y);
       $("stCursor").textContent = `x ${ix.toFixed(1)}  y ${iy.toFixed(1)}  zoom ${(view.s * 100).toFixed(0)}%`;
     }
-    $("stHint").textContent = mode === "draw"
+    if (performance.now() >= flashUntil) $("stHint").textContent = mode === "draw"
       ? (drawing ? `${drawing.pts.length} vertices · click first vertex / Enter to close · right-click or Backspace: undo vertex · Esc cancel` : "Click to start a polygon · Shift+drag to trace")
       : (selected >= 0 ? "Drag vertices · double-click edge to insert · right-click (or Alt+click) a highlighted vertex to delete it · H hole · Del delete polygon" : "Click a polygon to select it");
     $("modeDraw").classList.toggle("active", mode === "draw");
@@ -658,6 +693,7 @@
   $("prevBtn").onclick = () => go(cur - 1);
   $("nextBtn").onclick = () => go(cur + 1);
   $("helpBtn").onclick = () => $("help").showModal();
+  $("mergePolys").addEventListener("change", (e) => { settings.merge = e.target.checked; save(); });
   for (const id of ["annotator", "umpp", "label"]) {
     $(id).addEventListener("input", (e) => { settings[id] = e.target.value; save(); draw(); });
   }
@@ -670,6 +706,7 @@
 
   loadStore();
   $("annotator").value = settings.annotator; $("umpp").value = settings.umpp; $("label").value = settings.label;
+  $("mergePolys").checked = settings.merge !== false;
   resize();
 
   // exposed for automated tests
