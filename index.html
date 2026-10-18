@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>MorphoTrace</title>
 <meta name="description" content="Browser-based polygon annotation tool for projected-area ground truth. Images never leave your computer.">
-<link rel="stylesheet" href="style.css?v=0.1.9">
+<link rel="stylesheet" href="style.css?v=0.2.0">
 </head>
 <body>
 <header class="topbar">
@@ -55,20 +55,21 @@
   <section class="stage">
     <div class="toolbar">
       <div class="seg" role="group" aria-label="Mode">
-        <button class="btn seg-btn active" id="modeDraw" title="Draw (D)">Draw</button>
-        <button class="btn seg-btn" id="modeEdit" title="Edit (E)">Edit</button>
+        <button class="btn seg-btn active" id="modeDraw" title="Draw (D): add area. Overlapping polygons merge. Alt+first click subtracts one polygon.">Draw</button>
+        <button class="btn seg-btn" id="modeSub" title="Subtract (S): remove area. A polygon fully inside an area makes a hole.">Subtract</button>
+        <button class="btn seg-btn" id="modeEdit" title="Edit (E): select areas, move / add / delete vertices">Edit</button>
       </div>
-      <button class="btn" id="subBtn" title="Subtract mode (S): the next polygons remove area instead of adding it. Alt+first click subtracts a single polygon.">Subtract</button>
-      <button class="btn" id="holeBtn" title="Toggle selected polygon as hole (H)">Hole</button>
-      <button class="btn" id="delBtn" title="Delete selected polygon (Del)">Delete</button>
+      <button class="btn" id="delBtn" title="Delete the selected polygon (Del) — Edit mode">Delete polygon</button>
+      <span class="tb-sep"></span>
       <button class="btn" id="undoBtn" title="Undo (Ctrl/⌘+Z)">Undo</button>
       <button class="btn" id="redoBtn" title="Redo (Ctrl/⌘+Shift+Z)">Redo</button>
-      <button class="btn" id="fitBtn" title="Fit image (F)">Fit</button>
+      <span class="tb-sep"></span>
+      <button class="btn" id="fitBtn" title="Fit the whole image in the window (F)">Fit to window</button>
       <span class="chip" id="clsChip" title="Class = name of the folder that contains the image"></span>
       <span class="spacer"></span>
-      <button class="btn" id="skipBtn" title="Mark unusable (X)">Unusable</button>
-      <button class="btn" id="prevBtn" title="Previous (←)">◀</button>
-      <button class="btn" id="nextBtn" title="Next (→)">▶</button>
+      <button class="btn" id="skipBtn" title="Mark this image as unusable, with a reason (X)">Mark unusable</button>
+      <button class="btn" id="prevBtn" title="Previous image (←)">◀ Prev</button>
+      <button class="btn" id="nextBtn" title="Next image (→)">Next ▶</button>
     </div>
     <div class="canvas-wrap" id="wrap">
       <canvas id="cv"></canvas>
@@ -90,28 +91,33 @@
   <h2>MorphoTrace — help</h2>
   <div class="help-grid">
     <div>
-      <h3>Draw mode (D)</h3>
+      <h3>Draw (D): add area</h3>
       <ul>
-        <li><kbd>Click</kbd> add a vertex</li>
+        <li><kbd>Click</kbd> add a vertex (also inside an existing area)</li>
         <li><kbd>Shift</kbd>+drag trace freehand</li>
-        <li><kbd>S</kbd> subtract mode (red trace removes area); <kbd>Alt</kbd>+first click subtracts one polygon</li>
-        <li>Click an existing area (when not drawing) to select it; <kbd>Del</kbd> deletes it</li>
-        <li>Click the first vertex, <kbd>Enter</kbd> or double-click to close; a polygon closed over an existing one is merged into it</li>
-        <li>Right-click or <kbd>Backspace</kbd>: remove last vertex · <kbd>Esc</kbd> cancel</li>
+        <li>Click the first vertex, <kbd>Enter</kbd> or double-click to close</li>
+        <li>A polygon closed over an existing one merges with it</li>
+        <li><kbd>Alt</kbd>+first click: subtract this one polygon</li>
+        <li>Right-click or <kbd>Backspace</kbd> remove last vertex · <kbd>Esc</kbd> cancel</li>
       </ul>
-      <h3>Edit mode (E)</h3>
+      <h3>Subtract (S): remove area</h3>
       <ul>
-        <li>Click a polygon to select it</li>
+        <li>Draw (red trace) over the part to remove</li>
+        <li>A polygon fully inside an area makes a hole</li>
+      </ul>
+      <h3>Edit (E)</h3>
+      <ul>
+        <li>Hover an area (it highlights) and click to select it · <kbd>Del</kbd> delete it</li>
         <li>Drag a vertex to move it</li>
-        <li>Double-click a contour line to split it with a new vertex at that spot</li>
-        <li>Hover a vertex (it grows) and right-click, or <kbd>Alt</kbd>+click, to delete it; its neighbours are joined</li>
-        <li><kbd>H</kbd> toggle hole · <kbd>Del</kbd> delete polygon</li>
+        <li>Double-click a contour line to add a vertex there</li>
+        <li>Hover a vertex (it grows) and right-click, or <kbd>Alt</kbd>+click, to delete it</li>
+        <li><kbd>H</kbd> turn the selected polygon into a hole (advanced)</li>
       </ul>
     </div>
     <div>
       <h3>View</h3>
       <ul>
-        <li><kbd>Shift</kbd>+wheel: zoom at cursor · <kbd>F</kbd> fit</li>
+        <li><kbd>Shift</kbd>+wheel: zoom at cursor · <kbd>F</kbd> fit to window</li>
         <li>Wheel (vertical / horizontal): scroll the image</li>
         <li><kbd>Space</kbd>+drag or right-drag: pan</li>
         <li><kbd>←</kbd>/<kbd>→</kbd> previous / next image</li>
@@ -126,7 +132,7 @@
 </dialog>
 
 <script src="vendor/polygon-clipping-0.15.7.umd.min.js"></script>
-<script src="zip.js?v=0.1.9"></script>
-<script src="app.js?v=0.1.9"></script>
+<script src="zip.js?v=0.2.0"></script>
+<script src="app.js?v=0.2.0"></script>
 </body>
 </html>

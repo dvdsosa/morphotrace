@@ -8,7 +8,7 @@ Images never leave your computer: they're opened with the browser's File API and
 
 ## Features
 - Polygon drawing by clicks, freehand tracing (Shift + drag), multiple polygons per image, holes (subtracted).
-- Boolean editing: a new polygon closed over an existing one is merged with it (union), and in subtract mode (`S`, red trace) it removes that part instead (difference); enclosed gaps become holes. Merging can be switched off.
+- Three modes: **Draw** (add area; overlapping polygons merge), **Subtract** (remove area; enclosed gaps become holes) and **Edit** (select areas, move/add/delete vertices). Merging can be switched off.
 - Vertex editing: drag, insert (double-click an edge), delete (Alt + click); undo/redo.
 - Zoom at cursor (Shift + wheel), scroll with the wheel, pan, nearest-neighbour rendering at high zoom for pixel-level work.
 - Display-only brightness/contrast/invert to see translucent boundaries (never alters exported data).
@@ -24,30 +24,36 @@ Images never leave your computer: they're opened with the browser's File API and
 - `area_px_by_label`: net polygon area for each polygon label (e.g. `body=2000;appendage=300` in the CSV).
 - `area_mm2_* = area_px × (µm/px)² / 10⁶`.
 
+## Modes
+
+| Mode | Key | Click | Closing a polygon |
+|---|---|---|---|
+| **Draw** | `D` | always adds vertices, also inside an existing area | adds area; overlapping polygons merge (union) |
+| **Subtract** | `S` | always adds vertices (red trace) | removes area (difference); a polygon fully inside an area makes a hole |
+| **Edit** | `E` | selects the area under the cursor (it highlights on hover) | — |
+
 ## Keyboard and mouse
 
 | Action | Shortcut |
 |---|---|
-| Draw mode | `D` |
-| Edit mode | `E` |
-| Add a vertex | Click (draw mode) |
-| Trace freehand | `Shift` + drag (draw mode) |
-| Subtract mode (red trace removes area) | `S` or the Subtract button; `Alt` + first click subtracts a single polygon |
-| Select an area in draw mode | Click it when not drawing (it highlights on hover) |
+| Draw / Subtract / Edit mode | `D` / `S` / `E` |
+| Add a vertex | Click (Draw, Subtract) |
+| Trace freehand | `Shift` + drag (Draw, Subtract) |
+| Subtract a single polygon without leaving Draw | `Alt` + first click |
 | Close polygon | Click the first vertex, double-click, or `Enter` |
 | Remove last vertex while drawing | Right-click (without dragging) or `Backspace` |
 | Cancel polygon / deselect | `Esc` |
-| Select polygon | Click it (edit mode) |
-| Move vertex | Drag it (edit mode) |
-| Insert vertex | Double-click a contour line: it splits at that spot (edit mode) |
-| Delete vertex | Hover it until it grows, then right-click (or `Alt` + click) (edit mode); its neighbours are joined |
-| Toggle hole on selected polygon | `H` |
-| Delete selected polygon | `Del` (or `Backspace` when not drawing) |
+| Select an area | Click it (Edit) |
+| Delete the selected polygon | `Del`, or *Delete polygon* (Edit) |
+| Move vertex | Drag it (Edit) |
+| Add a vertex on a contour line | Double-click the line (Edit) |
+| Delete vertex | Hover it until it grows, then right-click (or `Alt` + click) (Edit) |
+| Turn the selected polygon into a hole (advanced) | `H` (Edit) |
 | Undo / redo | `Ctrl/⌘ + Z` / `Ctrl/⌘ + Shift + Z` (or `Ctrl/⌘ + Y`) |
 | Zoom at cursor | `Shift` + mouse wheel (or trackpad pinch) |
 | Scroll the image | Mouse wheel (vertical and horizontal) or trackpad swipe |
 | Pan | `Space` + drag, or right/middle-button drag |
-| Fit image to window | `F` |
+| Fit the image to the window | `F` |
 | Previous / next image | `←` / `→` (or `P` / `N`) |
 | Mark image unusable (with reason) | `X` |
 | Help | `?` |

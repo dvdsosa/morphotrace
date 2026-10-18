@@ -3,7 +3,7 @@
 (function () {
   "use strict";
 
-  const TOOL = { name: "MorphoTrace", version: "0.1.9" };
+  const TOOL = { name: "MorphoTrace", version: "0.2.0" };
   const STORE_KEY = "morphotrace.v1";
   const HIT_PX = 8;          // screen-space hit tolerance
   const FREEHAND_STEP = 3;   // screen px between freehand samples
@@ -16,7 +16,7 @@
   let annotations = {};            // key -> {polygons, skip, skipReason, timeMs, w, h}
   let settings = { annotator: "", umpp: 7.38, label: "organism", merge: true };
   let cur = -1;
-  let mode = "draw";
+  let mode = "draw";               // "draw" (add area), "subtract" (remove area) or "edit" (select / vertices)
   let drawing = null;              // {pts: [[x,y], ...]}
   let selected = -1;
   let view = { s: 1, tx: 0, ty: 0 };
@@ -24,8 +24,7 @@
   let pointer = { x: 0, y: 0, inside: false };
   let drag = null;                 // {kind: 'pan'|'vertex'|'free', ...}
   let hoverV = null;               // {pi, vi}: vertex under the cursor in edit mode
-  let hoverP = -1;                 // polygon under the cursor in draw mode (when not drawing)
-  let subtractMode = false;        // S toggles: the next polygons are subtracted instead of added
+  let hoverP = -1;                 // polygon under the cursor in edit mode
   let spaceDown = false;
   let shownAt = 0;
   const undoStacks = {}, redoStacks = {};
@@ -430,13 +429,15 @@
       const [ix, iy] = toImg(pointer.x, pointer.y);
       $("stCursor").textContent = `x ${ix.toFixed(1)}  y ${iy.toFixed(1)}  zoom ${(view.s * 100).toFixed(0)}%`;
     }
-    if (performance.now() >= flashUntil) $("stHint").textContent = mode === "draw"
-      ? (drawing ? `${drawing.subtract ? "SUBTRACT · " : ""}${drawing.pts.length} vertices · click first vertex / Enter to close · right-click or Backspace: undo vertex · Esc cancel` : subtractMode ? "SUBTRACT mode (S to leave): draw over an area to remove that part" : "Click to start a polygon (or click an area to select it) · Shift+drag to trace · S: subtract mode")
-      : (selected >= 0 ? "Drag vertices · double-click edge to insert · right-click (or Alt+click) a highlighted vertex to delete it · H hole · Del delete polygon" : "Click a polygon to select it");
+    const drawHint = drawing ? `${drawing.subtract ? "SUBTRACT · " : ""}${drawing.pts.length} vertices · click first vertex / Enter to close · right-click or Backspace: undo vertex · Esc cancel` : null;
+    const hint = mode === "draw" ? (drawHint || "DRAW · click to add vertices (also inside an area: overlapping polygons merge) · Shift+drag to trace · Alt+first click subtracts one polygon")
+      : mode === "subtract" ? (drawHint || "SUBTRACT · draw over the part to remove; a polygon fully inside an area makes a hole")
+      : (selected >= 0 ? "EDIT · drag vertices · double-click a line to add a vertex · right-click a highlighted vertex to delete it · Del deletes the polygon" : "EDIT · click an area to select it");
+    if (performance.now() >= flashUntil) $("stHint").textContent = hint;
     $("modeDraw").classList.toggle("active", mode === "draw");
-    $("delBtn").disabled = selected < 0; $("holeBtn").disabled = selected < 0;
-    $("subBtn").classList.toggle("active", subtractMode); $("subBtn").classList.toggle("danger", subtractMode);
+    $("modeSub").classList.toggle("active", mode === "subtract"); $("modeSub").classList.toggle("danger", mode === "subtract");
     $("modeEdit").classList.toggle("active", mode === "edit");
+    $("delBtn").disabled = !(mode === "edit" && selected >= 0);
   }
   function renderList() {
     const ul = $("imageList"); ul.textContent = "";
@@ -465,19 +466,14 @@
     const [sx, sy] = localXY(e), [ix, iy] = toImg(sx, sy);
     if (e.button === 1 || e.button === 2 || spaceDown) { drag = { kind: "pan", sx, sy, tx: view.tx, ty: view.ty, button: e.button, moved: false }; return; }
     if (e.button !== 0) return;
-    if (mode === "draw") {
+    if (mode === "draw" || mode === "subtract") {
       if (drawing && drawing.pts.length >= 3) {
         const [fx, fy] = toScr(drawing.pts[0][0], drawing.pts[0][1]);
         if (Math.hypot(fx - sx, fy - sy) <= HIT_PX) return closeDrawing();
       }
-      if (!drawing) {
-        const sub = subtractMode || e.altKey;
-        if (!sub && !e.shiftKey) {
-          const hp = hitPoly(ix, iy);
-          if (hp >= 0) { selected = hp; hoverP = -1; draw(); return; }   // click on an area selects it
-        }
-        drawing = { pts: [], subtract: sub }; selected = -1; hoverP = -1;
-      }
+      // Draw and Subtract always draw, also inside existing areas; Alt on the first click of a Draw
+      // trace makes that single polygon a subtraction
+      if (!drawing) { drawing = { pts: [], subtract: mode === "subtract" || e.altKey }; selected = -1; hoverP = -1; }
       drawing.pts.push(clampPt([ix, iy], images[cur].w, images[cur].h));
       if (e.shiftKey) drag = { kind: "free", lx: sx, ly: sy };
       draw();
@@ -500,15 +496,12 @@
     const [sx, sy] = localXY(e);
     pointer = { x: sx, y: sy, inside: true };
     if (!drag) {
-      if (mode === "draw" && cur >= 0) {
-        const [ix, iy] = toImg(sx, sy);
-        hoverP = !drawing && !subtractMode && !e.altKey ? hitPoly(ix, iy) : -1;
-        cv.style.cursor = hoverP >= 0 ? "pointer" : "crosshair";
-        return draw();
-      }
-      const hv = mode === "edit" && cur >= 0 ? (hitVertex(sx, sy, selected) || hitVertex(sx, sy, -1)) : null;
+      if (mode !== "edit" || cur < 0) { hoverP = -1; hoverV = null; cv.style.cursor = "crosshair"; return draw(); }
+      const hv = hitVertex(sx, sy, selected) || hitVertex(sx, sy, -1);
       hoverV = hv;
-      cv.style.cursor = hv ? "pointer" : "";
+      if (hv) hoverP = -1;
+      else { const he = hitEdge(sx, sy); const [ix, iy] = toImg(sx, sy); hoverP = he ? he.pi : hitPoly(ix, iy); }
+      cv.style.cursor = hv || hoverP >= 0 ? "pointer" : "default";
       return draw();
     }
     if (drag.kind === "pan") {
@@ -539,7 +532,7 @@
   cv.addEventListener("dblclick", (e) => {
     if (cur < 0) return;
     const [sx, sy] = localXY(e);
-    if (mode === "draw" && drawing) {
+    if ((mode === "draw" || mode === "subtract") && drawing) {
       // the two clicks of a double-click added two near-identical vertices
       const p = drawing.pts;
       while (p.length >= 2) {
@@ -589,12 +582,12 @@
     switch (e.key) {
       case "Enter": closeDrawing(); break;
       case "Escape": drawing = null; selected = -1; draw(); break;
-      case "Backspace": if (drawing) { e.preventDefault(); drawing.pts.pop(); if (!drawing.pts.length) drawing = null; draw(); } else deleteSelected(); break;
-      case "Delete": deleteSelected(); break;
-      case "d": case "D": mode = "draw"; selected = -1; draw(); break;
-      case "e": case "E": if (drawing && drawing.pts.length >= 3) closeDrawing(); drawing = null; mode = "edit"; draw(); break;
-      case "h": case "H": toggleHole(); break;
-      case "s": case "S": setSubtract(!subtractMode); break;
+      case "Backspace": if (drawing) { e.preventDefault(); drawing.pts.pop(); if (!drawing.pts.length) drawing = null; draw(); } else if (mode === "edit") deleteSelected(); break;
+      case "Delete": if (mode === "edit") deleteSelected(); break;
+      case "d": case "D": setMode("draw"); break;
+      case "s": case "S": setMode("subtract"); break;
+      case "e": case "E": setMode("edit"); break;
+      case "h": case "H": if (mode === "edit") toggleHole(); break;
       case "f": case "F": fit(); break;
       case "x": case "X": toggleSkip(); break;
       case "ArrowRight": case "n": case "N": go(cur + 1); break;
@@ -715,11 +708,17 @@
   wrap.addEventListener("dragover", (e) => { e.preventDefault(); wrap.classList.add("dragover"); });
   wrap.addEventListener("dragleave", () => wrap.classList.remove("dragover"));
   wrap.addEventListener("drop", (e) => { e.preventDefault(); wrap.classList.remove("dragover"); addFiles(e.dataTransfer.files); });
-  $("modeDraw").onclick = () => { mode = "draw"; selected = -1; draw(); };
-  $("modeEdit").onclick = () => { if (drawing && drawing.pts.length >= 3) closeDrawing(); drawing = null; mode = "edit"; draw(); };
-  function setSubtract(on) { subtractMode = on; if (on) { mode = "draw"; selected = -1; } if (drawing) drawing.subtract = on || drawing.subtract; draw(); }
-  $("subBtn").onclick = () => setSubtract(!subtractMode);
-  $("holeBtn").onclick = toggleHole;
+  function setMode(m) {
+    if (m === mode) return;
+    // switching mode closes a valid trace in progress (as a polygon of the mode it was started in)
+    if (drawing && drawing.pts.length >= 3) closeDrawing();
+    drawing = null; selected = -1; hoverP = -1; hoverV = null;
+    mode = m; cv.style.cursor = m === "edit" ? "default" : "crosshair";
+    draw();
+  }
+  $("modeDraw").onclick = () => setMode("draw");
+  $("modeSub").onclick = () => setMode("subtract");
+  $("modeEdit").onclick = () => setMode("edit");
   $("delBtn").onclick = deleteSelected;
   $("undoBtn").onclick = undo;
   $("redoBtn").onclick = redo;
