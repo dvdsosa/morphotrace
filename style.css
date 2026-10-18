@@ -73,7 +73,14 @@ body { background: var(--bg); color: var(--text); font: 14px/1.4 system-ui, -app
 #cv { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
 .empty { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #c9cfda; text-align: center; padding: 16px; pointer-events: none; }
 .empty .muted { color: #8f97a8; }
-.statusbar { display: flex; gap: 18px; padding: 5px 12px; border-top: 1px solid var(--line); background: var(--panel); font-size: 12px; flex-wrap: wrap; font-variant-numeric: tabular-nums; }
+/* two fixed one-line rows (figures, then hint) so changing hints never resize the canvas; the file name
+   is the part that shortens when space runs out */
+.statusbar { display: flex; flex-wrap: wrap; column-gap: 18px; padding: 5px 12px; border-top: 1px solid var(--line); background: var(--panel); font-size: 12px; line-height: 1.45; font-variant-numeric: tabular-nums; }
+.statusbar > span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.statusbar #stFile { flex: 1 1 0; min-width: 0; }
+.statusbar #stArea, .statusbar #stCursor { flex: none; }
+.statusbar #stHint { flex: 0 0 100%; min-height: 1.45em; }
+@media (max-width: 760px) { .statusbar #stCursor { display: none; } } /* keeps phones at two rows too */
 dialog { border: 1px solid var(--line); border-radius: 10px; background: var(--panel); color: var(--text); max-width: 760px; width: calc(100% - 32px); }
 dialog::backdrop { background: rgba(0,0,0,.45); }
 .help-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }

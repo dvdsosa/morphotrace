@@ -39,9 +39,15 @@ Browser checks live in `tests/e2e/` and run with [playwright-cli](https://github
 
 ```bash
 python3 -m http.server 8765 &
-playwright-cli open http://localhost:8765/
-playwright-cli run-code --filename=tests/e2e/storage.e2e.js   # autosave failures are reported, never silent
+playwright-cli install-browser firefox && playwright-cli install-browser webkit   # once
+for b in chromium firefox webkit; do
+  playwright-cli -s=$b open --browser=$b http://localhost:8765/
+  playwright-cli -s=$b run-code --filename=tests/e2e/core.e2e.js      # drawing, editing, zoom, navigation, display, exports, import, persistence
+  playwright-cli -s=$b run-code --filename=tests/e2e/storage.e2e.js   # autosave failures are reported, never silent
+done
 ```
+
+`core.e2e.js` returns a report with one line per check instead of stopping at the first failure. WebKit is the engine behind Safari.
 
 `check_export.py` recomputes every area with shapely, rasterises a pixel-centre mask and flags any mismatch with the exported areas and mask counts. It also reports self-intersecting polygons, overlapping solids and holes outside a solid, which biased areas up to v0.2.x.
 

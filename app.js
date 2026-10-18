@@ -3,7 +3,7 @@
 (function () {
   "use strict";
 
-  const TOOL = { name: "MorphoTrace", version: "0.3.1" };
+  const TOOL = { name: "MorphoTrace", version: "0.3.2" };
   const STORE_KEY = "morphotrace.v1";
   const HIT_PX = 8;          // screen-space hit tolerance
   const FREEHAND_STEP = 3;   // screen px between freehand samples
@@ -302,6 +302,29 @@
     pts.forEach(([x, y], i) => { const [sx, sy] = toScr(x, y); i ? ctx.lineTo(sx, sy) : ctx.moveTo(sx, sy); });
     if (close) ctx.closePath();
   }
+  // Safari / WebKit have no ctx.filter: there the adjusted image is computed by pixel, once per image and
+  // setting, with the same steps as the CSS filter (brightness, contrast, invert; clamped after each).
+  let adjusted = null; // {sig, canvas}
+  function displayImage(im) {
+    const { bright, contr, invert } = display;
+    if ("filter" in ctx || (bright === 100 && contr === 100 && !invert)) return im.img;
+    const sig = `${im.key}|${bright}|${contr}|${invert}`;
+    if (adjusted && adjusted.sig === sig) return adjusted.canvas;
+    const c = adjusted ? adjusted.canvas : document.createElement("canvas");
+    c.width = im.w; c.height = im.h;
+    const g = c.getContext("2d");
+    g.drawImage(im.img, 0, 0);
+    const id = g.getImageData(0, 0, im.w, im.h), d = id.data, lut = new Uint8ClampedArray(256);
+    const clamp = (x) => Math.min(1, Math.max(0, x));
+    for (let v = 0; v < 256; v++) {
+      const x = clamp((clamp((v / 255) * bright / 100) - 0.5) * contr / 100 + 0.5);
+      lut[v] = Math.round((invert ? 1 - x : x) * 255);
+    }
+    for (let i = 0; i < d.length; i += 4) { d[i] = lut[d[i]]; d[i + 1] = lut[d[i + 1]]; d[i + 2] = lut[d[i + 2]]; }
+    g.putImageData(id, 0, 0);
+    adjusted = { sig, canvas: c };
+    return c;
+  }
   function draw() {
     const r = wrap.getBoundingClientRect();
     ctx.clearRect(0, 0, r.width, r.height);
@@ -310,7 +333,7 @@
     ctx.save();
     ctx.imageSmoothingEnabled = view.s < 2;
     if ("filter" in ctx) ctx.filter = `brightness(${display.bright}%) contrast(${display.contr}%)${display.invert ? " invert(1)" : ""}`;
-    ctx.drawImage(im.img, view.tx, view.ty, im.w * view.s, im.h * view.s);
+    ctx.drawImage(displayImage(im), view.tx, view.ty, im.w * view.s, im.h * view.s);
     ctx.restore();
 
     const polys = annotations[im.key].polygons;
@@ -380,7 +403,7 @@
   let flashTimer = 0, flashUntil = 0;
   function flash(msg) {
     flashUntil = performance.now() + 2500;
-    $("stHint").textContent = msg; $("stHint").style.color = "#e0a030";
+    $("stHint").textContent = $("stHint").title = msg; $("stHint").style.color = "#e0a030";
     clearTimeout(flashTimer); flashTimer = setTimeout(() => { flashUntil = 0; $("stHint").style.color = ""; draw(); }, 2500);
   }
   function updateStatus() {
@@ -398,7 +421,7 @@
     const hint = mode === "draw" ? (drawHint || "DRAW · click to add vertices (also inside an area: overlapping polygons merge) · Shift+drag to trace · Alt+first click subtracts one polygon")
       : mode === "subtract" ? (drawHint || "SUBTRACT · draw over the part to remove; a polygon fully inside an area makes a hole")
       : (selected >= 0 ? "EDIT · drag vertices · double-click a line to add a vertex · right-click a highlighted vertex to delete it · Del deletes the polygon" : "EDIT · click an area to select it");
-    if (performance.now() >= flashUntil) $("stHint").textContent = hint;
+    if (performance.now() >= flashUntil) $("stHint").textContent = $("stHint").title = hint;
     $("zoomPct").textContent = `${Math.round(view.s * 100)}%`;
     $("navPos").textContent = `${cur + 1} / ${images.length}`;
     $("modeDraw").classList.toggle("active", mode === "draw");

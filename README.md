@@ -4,7 +4,7 @@ A dependency-free, browser-based polygon annotation tool for producing **project
 
 **Live version:** https://dvdsosa.github.io/morphotrace/ · **Archive:** Zenodo DOI (see `CITATION.cff`)
 
-Images never leave your computer: they're opened with the browser's File API and nothing is uploaded. The tool also runs offline. Download the repository and open `index.html`.
+Images never leave your computer: they're opened with the browser's File API and nothing is uploaded. The tool also runs offline. Download the repository and open `index.html`. It is tested in current Chrome, Firefox and Safari (WebKit).
 
 ## Features
 - Polygon drawing by clicks, freehand tracing (Shift + drag), multiple polygons per image, holes (subtracted).
