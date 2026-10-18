@@ -6,7 +6,7 @@
 <title>MorphoTrace</title>
 <meta name="description" content="Browser-based polygon annotation tool for projected-area ground truth. Images never leave your computer.">
 <script>try { const t = localStorage.getItem("morphotrace.theme"); if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; } catch (e) {}</script>
-<link rel="stylesheet" href="style.css?v=0.2.3">
+<link rel="stylesheet" href="style.css?v=0.2.4">
 </head>
 <body>
 <header class="topbar">
@@ -27,6 +27,7 @@
     <button class="btn" id="exportCsv">Export CSV</button>
     <button class="btn" id="exportZip">Masks (.zip)</button>
   </div>
+  <div class="tb-group tb-util">
   <button class="btn ghost" id="helpBtn" aria-label="Help">?</button>
   <div class="theme-switch" role="radiogroup" aria-label="Colour theme" data-value="auto">
     <span class="theme-thumb" aria-hidden="true"></span>
@@ -39,6 +40,7 @@
     <button type="button" role="radio" data-theme-choice="dark" title="Dark theme" aria-label="Dark theme">
       <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 14.2A8.5 8.5 0 0 1 9.8 3.5a8.5 8.5 0 1 0 10.7 10.7z"/></svg>
     </button>
+  </div>
   </div>
 </header>
 
@@ -67,30 +69,38 @@
 
   <section class="stage">
     <div class="toolbar">
-      <div class="seg" role="group" aria-label="Mode">
-        <button class="btn seg-btn active" id="modeDraw" title="Draw (D): add area. Overlapping polygons merge. Alt+first click subtracts one polygon.">Draw</button>
-        <button class="btn seg-btn" id="modeSub" title="Subtract (S): remove area. A polygon fully inside an area makes a hole.">Subtract</button>
-        <button class="btn seg-btn" id="modeEdit" title="Edit (E): select areas, move / add / delete vertices">Edit</button>
+      <button class="btn panel-toggle" id="panelBtn" title="Show / hide the side panel" aria-label="Toggle side panel" aria-expanded="true">☰</button>
+      <div class="tb-cluster">
+        <div class="seg" role="group" aria-label="Mode">
+          <button class="btn seg-btn active" id="modeDraw" title="Draw (D): add area. Overlapping polygons merge. Alt+first click subtracts one polygon.">Draw</button>
+          <button class="btn seg-btn" id="modeSub" title="Subtract (S): remove area. A polygon fully inside an area makes a hole.">Subtract</button>
+          <button class="btn seg-btn" id="modeEdit" title="Edit (E): select areas, move / add / delete vertices">Edit</button>
+        </div>
+        <button class="btn" id="delBtn" title="Delete the selected polygon (Del) — Edit mode">Delete polygon</button>
       </div>
-      <button class="btn" id="delBtn" title="Delete the selected polygon (Del) — Edit mode">Delete polygon</button>
-      <span class="tb-sep"></span>
-      <button class="btn" id="undoBtn" title="Undo (Ctrl/⌘+Z)">Undo</button>
-      <button class="btn" id="redoBtn" title="Redo (Ctrl/⌘+Shift+Z)">Redo</button>
-      <span class="tb-sep"></span>
-      <div class="seg zoom-group" role="group" aria-label="Zoom">
-        <button class="btn seg-btn" id="zoomOut" title="Zoom out (−)" aria-label="Zoom out">
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 21 21M7.5 10.5h6"/></svg>
-        </button>
-        <button class="btn seg-btn zoom-pct" id="zoomPct" title="Current zoom. Click: fit the image to the window (F or 0). Double-click: 100% (1)" aria-label="Fit image to window">100%</button>
-        <button class="btn seg-btn" id="zoomIn" title="Zoom in (+)" aria-label="Zoom in">
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 21 21M7.5 10.5h6M10.5 7.5v6"/></svg>
-        </button>
+      <div class="tb-cluster">
+        <button class="btn" id="undoBtn" title="Undo (Ctrl/⌘+Z)">Undo</button>
+        <button class="btn" id="redoBtn" title="Redo (Ctrl/⌘+Shift+Z)">Redo</button>
+      </div>
+      <div class="tb-cluster">
+        <div class="seg zoom-group" role="group" aria-label="Zoom">
+          <button class="btn seg-btn" id="zoomOut" title="Zoom out (−)" aria-label="Zoom out">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 21 21M7.5 10.5h6"/></svg>
+          </button>
+          <button class="btn seg-btn zoom-pct" id="zoomPct" title="Current zoom. Click: fit the image to the window (F or 0). Double-click: 100% (1)" aria-label="Fit image to window">100%</button>
+          <button class="btn seg-btn" id="zoomIn" title="Zoom in (+)" aria-label="Zoom in">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 21 21M7.5 10.5h6M10.5 7.5v6"/></svg>
+          </button>
+        </div>
       </div>
       <span class="chip" id="clsChip" title="Class = name of the folder that contains the image"></span>
-      <span class="spacer"></span>
-      <button class="btn" id="skipBtn" title="Mark this image as unusable, with a reason (X)">Mark unusable</button>
-      <button class="btn" id="prevBtn" title="Previous image (←)">◀ Prev</button>
-      <button class="btn" id="nextBtn" title="Next image (→)">Next ▶</button>
+      <div class="tb-cluster tb-end">
+        <button class="btn" id="skipBtn" title="Mark this image as unusable, with a reason (X)">Mark unusable</button>
+        <div class="seg nav-group" role="group" aria-label="Image navigation">
+          <button class="btn seg-btn" id="prevBtn" title="Previous image (←)">◀ Prev</button>
+          <button class="btn seg-btn" id="nextBtn" title="Next image (→)">Next ▶</button>
+        </div>
+      </div>
     </div>
     <div class="canvas-wrap" id="wrap">
       <canvas id="cv"></canvas>
@@ -154,7 +164,7 @@
 </dialog>
 
 <script src="vendor/polygon-clipping-0.15.7.umd.min.js"></script>
-<script src="zip.js?v=0.2.3"></script>
-<script src="app.js?v=0.2.3"></script>
+<script src="zip.js?v=0.2.4"></script>
+<script src="app.js?v=0.2.4"></script>
 </body>
 </html>

@@ -3,7 +3,7 @@
 (function () {
   "use strict";
 
-  const TOOL = { name: "MorphoTrace", version: "0.2.3" };
+  const TOOL = { name: "MorphoTrace", version: "0.2.4" };
   const STORE_KEY = "morphotrace.v1";
   const HIT_PX = 8;          // screen-space hit tolerance
   const FREEHAND_STEP = 3;   // screen px between freehand samples
@@ -737,6 +737,12 @@
     mode = m; cv.style.cursor = m === "edit" ? "default" : "crosshair";
     draw();
   }
+  // side panel toggle (shown on narrow screens; collapsed by default on phones)
+  const sidebar = $("sidebar");
+  const setPanel = (open) => { sidebar.classList.toggle("collapsed", !open); $("panelBtn").setAttribute("aria-expanded", String(open)); resize(); };
+  $("panelBtn").onclick = () => setPanel(sidebar.classList.contains("collapsed"));
+  if (window.matchMedia("(max-width: 760px)").matches) setPanel(false);
+  window.matchMedia("(max-width: 760px)").addEventListener("change", (e) => setPanel(!e.matches));
   $("modeDraw").onclick = () => setMode("draw");
   $("modeSub").onclick = () => setMode("subtract");
   $("modeEdit").onclick = () => setMode("edit");
