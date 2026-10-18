@@ -6,7 +6,7 @@
   <img src="docs/media/demo.gif" width="960" alt="Annotating a copepod in MorphoTrace: open a folder, click around the body, Shift-drag along an antenna so that it merges, drag a vertex in Edit mode, read the area, go to the next image and export.">
 </p>
 
-[![tests](https://github.com/dvdsosa/morphotrace/actions/workflows/tests.yml/badge.svg)](https://github.com/dvdsosa/morphotrace/actions/workflows/tests.yml) · MIT licence · Zenodo DOI: see [`CITATION.cff`](CITATION.cff)
+[![tests](https://github.com/dvdsosa/morphotrace/actions/workflows/tests.yml/badge.svg)](https://github.com/dvdsosa/morphotrace/actions/workflows/tests.yml) · MIT licence · [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23454365.svg)](https://doi.org/10.5281/zenodo.23454365)
 
 ## Open the tool
 
@@ -159,7 +159,7 @@ Bug reports and pull requests are welcome: see [CONTRIBUTING.md](CONTRIBUTING.md
 
 ## Citation
 
-If you use MorphoTrace, please cite it with the metadata in [`CITATION.cff`](CITATION.cff) (Zenodo DOI).
+If you use MorphoTrace, please cite it with the metadata in [`CITATION.cff`](CITATION.cff). Zenodo DOI for all versions: [10.5281/zenodo.23454365](https://doi.org/10.5281/zenodo.23454365); version 0.4.0: [10.5281/zenodo.23454366](https://doi.org/10.5281/zenodo.23454366).
 
 ## Authorship
 

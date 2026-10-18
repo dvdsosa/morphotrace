@@ -9,6 +9,14 @@ abstract: >-
 version: 0.4.0
 date-released: 2026-10-18
 license: MIT
+doi: 10.5281/zenodo.23454365
+identifiers:
+  - type: doi
+    value: 10.5281/zenodo.23454365
+    description: "Concept DOI (all versions)"
+  - type: doi
+    value: 10.5281/zenodo.23454366
+    description: "Version 0.4.0"
 repository-code: "https://github.com/dvdsosa/morphotrace"
 url: "https://dvdsosa.github.io/morphotrace/"
 authors:
