@@ -26,6 +26,17 @@ Please do not attach images you are not allowed to share. MorphoTrace never uplo
 - **Measurements must not change silently.** Any change to how areas, masks or exports are computed needs a note in the README ("Measurement definitions") and a version bump, because published results may depend on them.
 - **Backward-compatible exports.** Older `annotations.json` files must still import.
 
+## Automated tests
+
+The measurement code (areas, clipping, merge/subtract, CSV) lives in `geometry.js`, with no DOM, so it can be tested outside the browser. Run from the repository root:
+
+```bash
+node --test tests/                                  # unit + property tests, no install needed (Node ≥ 18)
+uv run tests/check_export.py annotations.json       # independent check of an export with shapely
+```
+
+`check_export.py` recomputes every area with shapely, rasterises a pixel-centre mask and flags invalid (self-intersecting) polygons, overlapping solids, holes outside a solid and any mismatch. Tests marked `todo` document known limitations; they do not fail the run.
+
 ## Manual test checklist
 
 - [ ] Load images (files and a folder) and navigate between them.
