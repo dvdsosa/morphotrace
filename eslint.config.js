@@ -34,6 +34,6 @@ module.exports = [
   { files: ["geometry.js"], languageOptions: { ecmaVersion: 2022, sourceType: "script", globals: { ...browser, ...node } }, rules },
   { files: ["tests/*.js"], languageOptions: { ecmaVersion: 2022, sourceType: "commonjs", globals: node }, rules },
   // e2e files are one function expression, run in the page's Node context by playwright-cli
-  { files: ["tests/e2e/*.js"], languageOptions: { ecmaVersion: 2022, sourceType: "script", globals: browser }, rules },
+  { files: ["tests/e2e/*.js", "docs/media/*.js"], languageOptions: { ecmaVersion: 2022, sourceType: "script", globals: browser }, rules },
   { files: ["eslint.config.js"], languageOptions: { sourceType: "commonjs", globals: node }, rules },
 ];
