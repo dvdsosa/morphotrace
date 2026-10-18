@@ -3,7 +3,7 @@
 (function () {
   "use strict";
 
-  const TOOL = { name: "MorphoTrace", version: "0.2.0" };
+  const TOOL = { name: "MorphoTrace", version: "0.2.1" };
   const STORE_KEY = "morphotrace.v1";
   const HIT_PX = 8;          // screen-space hit tolerance
   const FREEHAND_STEP = 3;   // screen px between freehand samples
@@ -366,14 +366,31 @@
     ctx.restore();
 
     const polys = annotations[im.key].polygons;
+    // Fill: one path with solids wound one way and holes the other, filled with the nonzero rule, so holes
+    // are cut out (the image shows through) while overlapping solids still fill.
+    const signedArea = (pts) => { let a = 0; for (let i = 0, n = pts.length; i < n; i++) { const [x1, y1] = pts[i], [x2, y2] = pts[(i + 1) % n]; a += x1 * y2 - x2 * y1; } return a / 2; };
+    const addRing = (pts, positive) => {
+      const ring = (signedArea(pts) > 0) === positive ? pts : [...pts].reverse();
+      ring.forEach(([x, y], k) => { const [sx, sy] = toScr(x, y); k ? ctx.lineTo(sx, sy) : ctx.moveTo(sx, sy); });
+      ctx.closePath();
+    };
+    const fillArea = (solidIdx, alpha) => {
+      ctx.beginPath();
+      solidIdx.forEach((i) => addRing(polys[i].points, true));
+      polys.forEach((p) => { if (p.hole) addRing(p.points, false); });
+      ctx.fillStyle = `rgba(0,229,255,${alpha})`; ctx.fill("nonzero");
+    };
+    const solids = polys.map((p, i) => i).filter((i) => !polys[i].hole);
+    if (display.fill && solids.length) fillArea(solids, 0.16);
+    const hotSolid = [hoverP, selected].filter((i) => i >= 0 && polys[i] && !polys[i].hole);
+    if (hotSolid.length) fillArea([...new Set(hotSolid)], 0.20);
+    // Outlines: solids and holes share the contour colour (a hole reads as the inner edge of the area);
+    // the selected polygon is yellow and the hovered one is drawn thicker.
     polys.forEach((p, i) => {
-      const col = i === selected ? "#ffd400" : p.hole ? "#ff4fd8" : "#00e5ff";
+      const col = i === selected ? "#ffd400" : "#00e5ff";
       pathPoly(p.points, true);
-      const hot = i === hoverP || i === selected;
-      if (display.fill || hot) { ctx.fillStyle = p.hole ? `rgba(255,79,216,${hot ? 0.34 : 0.18})` : `rgba(0,229,255,${hot ? 0.34 : 0.16})`; ctx.fill(); }
-      ctx.lineWidth = i === selected ? 2.5 : i === hoverP ? 2.5 : 1.5; ctx.strokeStyle = col;
-      if (p.hole) ctx.setLineDash([5, 4]);
-      ctx.stroke(); ctx.setLineDash([]);
+      ctx.lineWidth = i === selected || i === hoverP ? 2.5 : 1.5; ctx.strokeStyle = col;
+      ctx.stroke();
       if (mode === "edit" && (i === selected || selected < 0)) drawVertices(p.points, col, hoverV && hoverV.pi === i ? hoverV.vi : -1);
     });
 
