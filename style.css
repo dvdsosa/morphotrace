@@ -31,6 +31,7 @@ body { background: var(--bg); color: var(--text); font: 14px/1.4 system-ui, -app
 .btn.ghost { background: transparent; }
 .btn.small { padding: 3px 8px; font-size: 12px; }
 .btn.active { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+.btn.danger { background: #d64545; border-color: #d64545; color: #fff; }
 .btn:disabled { opacity: .45; cursor: default; }
 .seg { display: inline-flex; }
 .seg-btn { border-radius: 0; }

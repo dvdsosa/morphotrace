@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>MorphoTrace</title>
 <meta name="description" content="Browser-based polygon annotation tool for projected-area ground truth. Images never leave your computer.">
-<link rel="stylesheet" href="style.css?v=0.1.8">
+<link rel="stylesheet" href="style.css?v=0.1.9">
 </head>
 <body>
 <header class="topbar">
@@ -58,6 +58,7 @@
         <button class="btn seg-btn active" id="modeDraw" title="Draw (D)">Draw</button>
         <button class="btn seg-btn" id="modeEdit" title="Edit (E)">Edit</button>
       </div>
+      <button class="btn" id="subBtn" title="Subtract mode (S): the next polygons remove area instead of adding it. Alt+first click subtracts a single polygon.">Subtract</button>
       <button class="btn" id="holeBtn" title="Toggle selected polygon as hole (H)">Hole</button>
       <button class="btn" id="delBtn" title="Delete selected polygon (Del)">Delete</button>
       <button class="btn" id="undoBtn" title="Undo (Ctrl/⌘+Z)">Undo</button>
@@ -93,6 +94,8 @@
       <ul>
         <li><kbd>Click</kbd> add a vertex</li>
         <li><kbd>Shift</kbd>+drag trace freehand</li>
+        <li><kbd>S</kbd> subtract mode (red trace removes area); <kbd>Alt</kbd>+first click subtracts one polygon</li>
+        <li>Click an existing area (when not drawing) to select it; <kbd>Del</kbd> deletes it</li>
         <li>Click the first vertex, <kbd>Enter</kbd> or double-click to close; a polygon closed over an existing one is merged into it</li>
         <li>Right-click or <kbd>Backspace</kbd>: remove last vertex · <kbd>Esc</kbd> cancel</li>
       </ul>
@@ -123,7 +126,7 @@
 </dialog>
 
 <script src="vendor/polygon-clipping-0.15.7.umd.min.js"></script>
-<script src="zip.js?v=0.1.8"></script>
-<script src="app.js?v=0.1.8"></script>
+<script src="zip.js?v=0.1.9"></script>
+<script src="app.js?v=0.1.9"></script>
 </body>
 </html>

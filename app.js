@@ -3,7 +3,7 @@
 (function () {
   "use strict";
 
-  const TOOL = { name: "MorphoTrace", version: "0.1.8" };
+  const TOOL = { name: "MorphoTrace", version: "0.1.9" };
   const STORE_KEY = "morphotrace.v1";
   const HIT_PX = 8;          // screen-space hit tolerance
   const FREEHAND_STEP = 3;   // screen px between freehand samples
@@ -24,6 +24,8 @@
   let pointer = { x: 0, y: 0, inside: false };
   let drag = null;                 // {kind: 'pan'|'vertex'|'free', ...}
   let hoverV = null;               // {pi, vi}: vertex under the cursor in edit mode
+  let hoverP = -1;                 // polygon under the cursor in draw mode (when not drawing)
+  let subtractMode = false;        // S toggles: the next polygons are subtracted instead of added
   let spaceDown = false;
   let shownAt = 0;
   const undoStacks = {}, redoStacks = {};
@@ -176,6 +178,13 @@
 
   // ---------- undo ----------
   function snapshot() { return JSON.stringify(annotations[images[cur].key].polygons); }
+  function snapshotNow() { return snapshot(); }
+  function commitUndo(snap) {
+    const k = images[cur].key;
+    (undoStacks[k] = undoStacks[k] || []).push(snap);
+    if (undoStacks[k].length > 200) undoStacks[k].shift();
+    redoStacks[k] = [];
+  }
   function pushUndo() {
     const k = images[cur].key;
     (undoStacks[k] = undoStacks[k] || []).push(snapshot());
@@ -204,46 +213,52 @@
   // ---------- polygon operations ----------
   function closeDrawing() {
     if (!drawing || drawing.pts.length < 3) return;
-    pushUndo();
     const polys = annotations[images[cur].key].polygons;
     const poly = { label: settings.label || "organism", hole: false, points: clipToImage(drawing.pts.map(([x, y]) => [round3(x), round3(y)]), images[cur].w, images[cur].h) };
+    const subtract = !!drawing.subtract;
     drawing = null;
-    const merged = settings.merge !== false ? mergeOverlapping(polys, poly) : 0;
-    if (!merged) { polys.push(poly); selected = polys.length - 1; }
-    changed();
-    if (merged) flash(`Merged with ${merged} overlapping polygon${merged > 1 ? "s" : ""} (Ctrl/⌘+Z to undo).`);
+    if (poly.points.length < 3) return draw();
+    const snapshot = snapshotNow();
+    if (subtract) {
+      const r = applyBoolean(polys, poly, "difference");
+      if (!r) { flash("The subtraction polygon does not overlap any area: nothing removed."); return draw(); }
+      commitUndo(snapshot); changed(); flash("Area subtracted (Ctrl/⌘+Z to undo)."); return;
+    }
+    const r = settings.merge !== false ? applyBoolean(polys, poly, "union") : 0;
+    if (!r) { polys.push(poly); selected = polys.length - 1; }
+    commitUndo(snapshot); changed();
+    if (r) flash("Merged with the overlapping area (Ctrl/⌘+Z to undo).");
   }
-  // Boolean union of a newly closed polygon with every existing (non-hole, same-label) polygon it overlaps.
-  // Vertices of the new polygon that fall inside an existing one disappear, and the outside parts are joined
-  // to the existing outline. Enclosed gaps produced by the union become hole polygons. Returns how many
-  // existing polygons were merged (0 = no overlap; the caller then adds the polygon unchanged).
-  function mergeOverlapping(polys, poly) {
+  // Boolean operation between a new polygon and the existing geometry of the same label.
+  // The existing geometry is (union of non-hole polygons) minus (union of hole polygons); the result
+  // replaces those polygons, and enclosed gaps become hole polygons. Returns 1 if the new polygon
+  // overlapped the existing geometry (and the operation was applied), 0 otherwise.
+  function applyBoolean(polys, poly, op) {
     const PC = window.polygonClipping;
-    if (!PC || poly.points.length < 3) return 0;
+    if (!PC) return 0;
     const ring = (pts) => [...pts, pts[0]];
     const open = (r) => r.slice(0, -1).map(([x, y]) => [round3(x), round3(y)]);
     const area = (mp) => mp.reduce((t, pg) => t + pg.reduce((u, r, k) => u + (k ? -1 : 1) * shoelace(r.slice(0, -1)), 0), 0);
-    const hits = [];
-    polys.forEach((q, i) => {
-      if (q.hole || (q.label || "") !== (poly.label || "")) return;
-      try { if (area(PC.intersection([ring(poly.points)], [ring(q.points)])) > 0.5) hits.push(i); } catch (err) { /* degenerate ring: skip */ }
-    });
-    if (!hits.length) return 0;
-    let union;
-    try { union = PC.union([ring(poly.points)], ...hits.map((i) => [ring(polys[i].points)])); }
-    catch (err) { return 0; }
-    for (const i of hits.sort((x, y) => y - x)) polys.splice(i, 1);
-    let first = -1;
-    for (const pg of union) {
-      pg.forEach((r, k) => {
+    const mine = polys.map((q, i) => i).filter((i) => (polys[i].label || "") === (poly.label || ""));
+    const solids = mine.filter((i) => !polys[i].hole), holes = mine.filter((i) => polys[i].hole);
+    if (!solids.length) return 0;
+    try {
+      let G = PC.union(...solids.map((i) => [ring(polys[i].points)]));
+      if (holes.length) G = PC.difference(G, ...holes.map((i) => [ring(polys[i].points)]));
+      const P = [ring(poly.points)];
+      if (area(PC.intersection(G, P)) <= 0.5) return 0;
+      const R = op === "union" ? PC.union(G, P) : PC.difference(G, P);
+      for (const i of mine.sort((a, b) => b - a)) polys.splice(i, 1);
+      let first = -1;
+      for (const pg of R) pg.forEach((r, k) => {
         const pts = open(r);
         if (pts.length < 3) return;
         polys.push({ label: poly.label, hole: k > 0, points: pts });
         if (first < 0 && k === 0) first = polys.length - 1;
       });
-    }
-    selected = first;
-    return hits.length;
+      selected = op === "union" ? first : -1;
+      return 1;
+    } catch (err) { return 0; }
   }
   const round3 = (v) => Math.round(v * 1000) / 1000;
   function deleteSelected() {
@@ -355,8 +370,9 @@
     polys.forEach((p, i) => {
       const col = i === selected ? "#ffd400" : p.hole ? "#ff4fd8" : "#00e5ff";
       pathPoly(p.points, true);
-      if (display.fill) { ctx.fillStyle = p.hole ? "rgba(255,79,216,0.18)" : "rgba(0,229,255,0.16)"; ctx.fill(); }
-      ctx.lineWidth = i === selected ? 2 : 1.5; ctx.strokeStyle = col;
+      const hot = i === hoverP || i === selected;
+      if (display.fill || hot) { ctx.fillStyle = p.hole ? `rgba(255,79,216,${hot ? 0.34 : 0.18})` : `rgba(0,229,255,${hot ? 0.34 : 0.16})`; ctx.fill(); }
+      ctx.lineWidth = i === selected ? 2.5 : i === hoverP ? 2.5 : 1.5; ctx.strokeStyle = col;
       if (p.hole) ctx.setLineDash([5, 4]);
       ctx.stroke(); ctx.setLineDash([]);
       if (mode === "edit" && (i === selected || selected < 0)) drawVertices(p.points, col, hoverV && hoverV.pi === i ? hoverV.vi : -1);
@@ -368,8 +384,9 @@
       if (pointer.inside && !(drag && drag.kind === "free")) {
         const [ix, iy] = toImg(pointer.x, pointer.y); const [sx, sy] = toScr(ix, iy); ctx.lineTo(sx, sy);
       }
-      ctx.strokeStyle = "#7CFC00"; ctx.lineWidth = 1.5; ctx.stroke();
-      drawVertices(pts, "#7CFC00");
+      const dcol = drawing.subtract ? "#ff4d4d" : "#7CFC00";
+      ctx.strokeStyle = dcol; ctx.lineWidth = 1.5; ctx.stroke();
+      drawVertices(pts, dcol);
       const [fx, fy] = toScr(pts[0][0], pts[0][1]);
       if (pts.length >= 3 && Math.hypot(fx - pointer.x, fy - pointer.y) <= HIT_PX) {
         ctx.beginPath(); ctx.arc(fx, fy, HIT_PX, 0, Math.PI * 2); ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 2; ctx.stroke();
@@ -414,9 +431,11 @@
       $("stCursor").textContent = `x ${ix.toFixed(1)}  y ${iy.toFixed(1)}  zoom ${(view.s * 100).toFixed(0)}%`;
     }
     if (performance.now() >= flashUntil) $("stHint").textContent = mode === "draw"
-      ? (drawing ? `${drawing.pts.length} vertices · click first vertex / Enter to close · right-click or Backspace: undo vertex · Esc cancel` : "Click to start a polygon · Shift+drag to trace")
+      ? (drawing ? `${drawing.subtract ? "SUBTRACT · " : ""}${drawing.pts.length} vertices · click first vertex / Enter to close · right-click or Backspace: undo vertex · Esc cancel` : subtractMode ? "SUBTRACT mode (S to leave): draw over an area to remove that part" : "Click to start a polygon (or click an area to select it) · Shift+drag to trace · S: subtract mode")
       : (selected >= 0 ? "Drag vertices · double-click edge to insert · right-click (or Alt+click) a highlighted vertex to delete it · H hole · Del delete polygon" : "Click a polygon to select it");
     $("modeDraw").classList.toggle("active", mode === "draw");
+    $("delBtn").disabled = selected < 0; $("holeBtn").disabled = selected < 0;
+    $("subBtn").classList.toggle("active", subtractMode); $("subBtn").classList.toggle("danger", subtractMode);
     $("modeEdit").classList.toggle("active", mode === "edit");
   }
   function renderList() {
@@ -451,7 +470,14 @@
         const [fx, fy] = toScr(drawing.pts[0][0], drawing.pts[0][1]);
         if (Math.hypot(fx - sx, fy - sy) <= HIT_PX) return closeDrawing();
       }
-      if (!drawing) { drawing = { pts: [] }; selected = -1; }
+      if (!drawing) {
+        const sub = subtractMode || e.altKey;
+        if (!sub && !e.shiftKey) {
+          const hp = hitPoly(ix, iy);
+          if (hp >= 0) { selected = hp; hoverP = -1; draw(); return; }   // click on an area selects it
+        }
+        drawing = { pts: [], subtract: sub }; selected = -1; hoverP = -1;
+      }
       drawing.pts.push(clampPt([ix, iy], images[cur].w, images[cur].h));
       if (e.shiftKey) drag = { kind: "free", lx: sx, ly: sy };
       draw();
@@ -474,6 +500,12 @@
     const [sx, sy] = localXY(e);
     pointer = { x: sx, y: sy, inside: true };
     if (!drag) {
+      if (mode === "draw" && cur >= 0) {
+        const [ix, iy] = toImg(sx, sy);
+        hoverP = !drawing && !subtractMode && !e.altKey ? hitPoly(ix, iy) : -1;
+        cv.style.cursor = hoverP >= 0 ? "pointer" : "crosshair";
+        return draw();
+      }
       const hv = mode === "edit" && cur >= 0 ? (hitVertex(sx, sy, selected) || hitVertex(sx, sy, -1)) : null;
       hoverV = hv;
       cv.style.cursor = hv ? "pointer" : "";
@@ -562,6 +594,7 @@
       case "d": case "D": mode = "draw"; selected = -1; draw(); break;
       case "e": case "E": if (drawing && drawing.pts.length >= 3) closeDrawing(); drawing = null; mode = "edit"; draw(); break;
       case "h": case "H": toggleHole(); break;
+      case "s": case "S": setSubtract(!subtractMode); break;
       case "f": case "F": fit(); break;
       case "x": case "X": toggleSkip(); break;
       case "ArrowRight": case "n": case "N": go(cur + 1); break;
@@ -684,6 +717,8 @@
   wrap.addEventListener("drop", (e) => { e.preventDefault(); wrap.classList.remove("dragover"); addFiles(e.dataTransfer.files); });
   $("modeDraw").onclick = () => { mode = "draw"; selected = -1; draw(); };
   $("modeEdit").onclick = () => { if (drawing && drawing.pts.length >= 3) closeDrawing(); drawing = null; mode = "edit"; draw(); };
+  function setSubtract(on) { subtractMode = on; if (on) { mode = "draw"; selected = -1; } if (drawing) drawing.subtract = on || drawing.subtract; draw(); }
+  $("subBtn").onclick = () => setSubtract(!subtractMode);
   $("holeBtn").onclick = toggleHole;
   $("delBtn").onclick = deleteSelected;
   $("undoBtn").onclick = undo;

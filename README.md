@@ -8,7 +8,7 @@ Images never leave your computer: they're opened with the browser's File API and
 
 ## Features
 - Polygon drawing by clicks, freehand tracing (Shift + drag), multiple polygons per image, holes (subtracted).
-- Automatic merging: a new polygon closed over an existing one is fused with it (boolean union), so an outline can be extended piece by piece. Can be switched off.
+- Boolean editing: a new polygon closed over an existing one is merged with it (union), and in subtract mode (`S`, red trace) it removes that part instead (difference); enclosed gaps become holes. Merging can be switched off.
 - Vertex editing: drag, insert (double-click an edge), delete (Alt + click); undo/redo.
 - Zoom at cursor (Shift + wheel), scroll with the wheel, pan, nearest-neighbour rendering at high zoom for pixel-level work.
 - Display-only brightness/contrast/invert to see translucent boundaries (never alters exported data).
@@ -32,6 +32,8 @@ Images never leave your computer: they're opened with the browser's File API and
 | Edit mode | `E` |
 | Add a vertex | Click (draw mode) |
 | Trace freehand | `Shift` + drag (draw mode) |
+| Subtract mode (red trace removes area) | `S` or the Subtract button; `Alt` + first click subtracts a single polygon |
+| Select an area in draw mode | Click it when not drawing (it highlights on hover) |
 | Close polygon | Click the first vertex, double-click, or `Enter` |
 | Remove last vertex while drawing | Right-click (without dragging) or `Backspace` |
 | Cancel polygon / deselect | `Esc` |
