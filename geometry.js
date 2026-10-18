@@ -75,21 +75,96 @@
     }).filter((p) => p.points.length >= 3);
     return changed;
   }
-  function stats(ann, umpp) {
-    let area = 0, per = 0, nHoles = 0;
-    for (const p of ann.polygons) {
+  // ---------- region geometry ----------
+  // A region is a polygon-clipping MultiPolygon: [[outerRing, holeRing, ...], ...], rings closed.
+  const ring = (pts) => [...pts, pts[0]];
+  const openRing = (r) => r.slice(0, -1).map(([x, y]) => [round3(x), round3(y)]);
+  const regionArea = (mp) => mp.reduce((t, pg) => t + pg.reduce((u, r, k) => u + (k ? -1 : 1) * shoelace(r.slice(0, -1)), 0), 0);
+  const regionOuterPerimeter = (mp) => mp.reduce((t, pg) => t + perimeter(pg[0].slice(0, -1)), 0);
+  // The region an annotation covers: (union of solid polygons) minus (union of hole polygons), optionally
+  // for one label only. Self-intersecting rings are resolved with the nonzero rule, as the canvas fills
+  // them. Returns null if PC (polygon-clipping) is unavailable or fails.
+  function region(polygons, PC, label) {
+    if (!PC) return null;
+    const mine = label === undefined ? polygons : polygons.filter((p) => (p.label || "unlabelled") === label);
+    const solids = mine.filter((p) => !p.hole && p.points.length >= 3), holes = mine.filter((p) => p.hole && p.points.length >= 3);
+    if (!solids.length) return [];
+    try {
+      const S = PC.union(...solids.map((p) => [ring(p.points)]));
+      return holes.length ? PC.difference(S, ...holes.map((p) => [ring(p.points)])) : S;
+    } catch (err) { return null; }
+  }
+  // Region → stored polygons: one solid per outer ring, one hole polygon per inner ring.
+  function regionToPolygons(mp, label) {
+    const out = [];
+    for (const pg of mp) pg.forEach((r, k) => {
+      const pts = openRing(r);
+      if (pts.length >= 3 && shoelace(pts) > 0) out.push({ label, hole: k > 0, points: pts });
+    });
+    return out;
+  }
+  // Cleans a newly drawn (solid) polygon: a self-intersecting outline becomes simple pieces (plus holes where it
+  // encloses a gap). Returns the input unchanged when it is already simple or PC is unavailable.
+  function normalizePolygon(poly, PC) {
+    const mp = region([Object.assign({}, poly, { hole: false })], PC);
+    if (!mp) return [poly];
+    if (mp.length === 1 && mp[0].length === 1 && Math.abs(regionArea(mp) - shoelace(poly.points)) < 1e-6) return [poly];
+    return regionToPolygons(mp, poly.label);
+  }
+
+  // Pixel-centre scanline rasteriser: pixel (i, j) gets `value` when its centre (i+0.5, j+0.5) is inside
+  // the rings under the even-odd rule (for a region: inside an outer ring and outside its holes).
+  // Same inside test as pointInPoly, so an edge through a centre is decided the same way.
+  function rasterizeRings(rings, w, h, out, value) {
+    for (let j = 0; j < h; j++) {
+      const y = j + 0.5, xs = [];
+      for (const r of rings) for (let a = 0, n = r.length, b = n - 1; a < n; b = a++) {
+        const [xa, ya] = r[a], [xb, yb] = r[b];
+        if ((ya > y) !== (yb > y)) xs.push(xa + ((y - ya) * (xb - xa)) / (yb - ya));
+      }
+      xs.sort((p, q) => p - q);
+      for (let k = 0; k + 1 < xs.length; k += 2) {
+        const i0 = Math.max(0, Math.ceil(xs[k] - 0.5)), i1 = Math.min(w, Math.ceil(xs[k + 1] - 0.5));
+        for (let i = i0; i < i1; i++) out[j * w + i] = value;
+      }
+    }
+    return out;
+  }
+  // Binary mask (1 = organism) of the annotation's region, w×h row-major, and its pixel count.
+  // Without PC: each solid polygon painted on its own, then each hole cleared.
+  function maskFromPolygons(polygons, w, h, PC) {
+    const mask = new Uint8Array(w * h), mp = region(polygons, PC);
+    if (mp) rasterizeRings([].concat(...mp), w, h, mask, 1);
+    else {
+      for (const p of polygons) if (!p.hole) rasterizeRings([p.points], w, h, mask, 1);
+      for (const p of polygons) if (p.hole) rasterizeRings([p.points], w, h, mask, 0);
+    }
+    let count = 0;
+    for (let i = 0; i < mask.length; i++) count += mask[i];
+    return { mask, count };
+  }
+
+  // Area of the region covered (overlaps count once, holes outside a solid remove nothing). The
+  // perimeter is the length of the outer boundaries. Without PC, falls back to summing polygons.
+  function stats(ann, umpp, PC) {
+    const nHoles = ann.polygons.filter((p) => p.hole).length;
+    let area = 0, per = 0;
+    const mp = region(ann.polygons, PC);
+    if (mp) { area = regionArea(mp); per = regionOuterPerimeter(mp); }
+    else for (const p of ann.polygons) {
       const a = shoelace(p.points);
-      if (p.hole) { area -= a; nHoles++; } else { area += a; per += perimeter(p.points); }
+      if (p.hole) area -= a; else { area += a; per += perimeter(p.points); }
     }
     const mm2 = area * Math.pow(Number(umpp) || 0, 2) / 1e6;
     return { area, mm2, per, nHoles, nPolys: ann.polygons.length - nHoles };
   }
-  function byLabel(ann) {
-    // net polygon area per label (holes subtract from the label they carry)
+  function byLabel(ann, PC) {
+    // region area per label (holes subtract from the label they carry)
     const out = {};
-    for (const p of ann.polygons) {
-      const k = p.label || "unlabelled";
-      out[k] = round3((out[k] || 0) + (p.hole ? -1 : 1) * shoelace(p.points));
+    for (const k of [...new Set(ann.polygons.map((p) => p.label || "unlabelled"))]) {
+      const mp = region(ann.polygons, PC, k);
+      out[k] = round3(mp ? regionArea(mp)
+        : ann.polygons.filter((p) => (p.label || "unlabelled") === k).reduce((t, p) => t + (p.hole ? -1 : 1) * shoelace(p.points), 0));
     }
     return out;
   }
@@ -102,26 +177,18 @@
   function applyBoolean(polys, poly, op, PC) {
     const none = { applied: false, first: -1 };
     if (!PC) return none;
-    const ring = (pts) => [...pts, pts[0]];
-    const open = (r) => r.slice(0, -1).map(([x, y]) => [round3(x), round3(y)]);
-    const area = (mp) => mp.reduce((t, pg) => t + pg.reduce((u, r, k) => u + (k ? -1 : 1) * shoelace(r.slice(0, -1)), 0), 0);
     const mine = polys.map((q, i) => i).filter((i) => (polys[i].label || "") === (poly.label || ""));
-    const solids = mine.filter((i) => !polys[i].hole), holes = mine.filter((i) => polys[i].hole);
-    if (!solids.length) return none;
+    if (!mine.some((i) => !polys[i].hole)) return none;
     try {
-      let G = PC.union(...solids.map((i) => [ring(polys[i].points)]));
-      if (holes.length) G = PC.difference(G, ...holes.map((i) => [ring(polys[i].points)]));
-      const P = [ring(poly.points)];
-      if (area(PC.intersection(G, P)) <= 0.5) return none;
+      const G = region(mine.map((i) => polys[i]), PC), P = region([Object.assign({}, poly, { hole: false })], PC);
+      if (!G || !P || regionArea(PC.intersection(G, P)) <= 0.5) return none;
       const R = op === "union" ? PC.union(G, P) : PC.difference(G, P);
       for (const i of mine.sort((a, b) => b - a)) polys.splice(i, 1);
       let first = -1;
-      for (const pg of R) pg.forEach((r, k) => {
-        const pts = open(r);
-        if (pts.length < 3) return;
-        polys.push({ label: poly.label, hole: k > 0, points: pts });
-        if (first < 0 && k === 0) first = polys.length - 1;
-      });
+      for (const p of regionToPolygons(R, poly.label)) {
+        polys.push(p);
+        if (first < 0 && !p.hole) first = polys.length - 1;
+      }
       return { applied: true, first };
     } catch (err) { return none; }
   }
@@ -137,5 +204,5 @@
     return `# ${tool.name} ${tool.version} | annotator=${obj.annotator} | um_per_px=${obj.um_per_px} | ${obj.exported}\n` + cols.join(",") + "\n" + rows.join("\n") + "\n";
   }
 
-  return { round3, shoelace, perimeter, pointInPoly, distToSeg, clipToImage, clampPt, clipAnnotation, stats, byLabel, applyBoolean, csvEscape, toCsv };
+  return { round3, shoelace, perimeter, pointInPoly, distToSeg, clipToImage, clampPt, clipAnnotation, region, regionArea, regionToPolygons, normalizePolygon, rasterizeRings, maskFromPolygons, stats, byLabel, applyBoolean, csvEscape, toCsv };
 });

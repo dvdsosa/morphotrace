@@ -218,13 +218,93 @@ test("toCsv: header, derived columns and CSV escaping", () => {
   assert.equal(G.csvEscape(null), "");
 });
 
-// ---------- known limitations (documented, not failures) ----------
-test("KNOWN: overlapping solids with merge disabled are double-counted in area_px_polygon", { todo: "stats() sums polygons; the mask counts their union" }, () => {
+// ---------- region-based areas (overlaps, self-intersections, stray holes) ----------
+// Reference rasteriser for a region (MultiPolygon): pixel centre inside an outer ring and in none of its holes.
+function rasterRegion(mp, w, h) {
+  let n = 0;
+  for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) {
+    const x = i + 0.5, y = j + 0.5;
+    if (mp.some((pg) => G.pointInPoly(x, y, pg[0]) && !pg.slice(1).some((r) => G.pointInPoly(x, y, r)))) n++;
+  }
+  return n;
+}
+const regionStats = (polys) => G.stats({ polygons: polys }, UMPP, PC);
+
+test("overlapping solids (merge disabled) count their overlap once", () => {
   const polys = [solid(rect(0, 0, 10, 10)), solid(rect(5, 5, 15, 15))];
-  assert.equal(netArea(polys), rasterCount(polys, 20, 20));
+  close(regionStats(polys).area, 175);
+  assert.equal(rasterCount(polys, 20, 20), 175);
+  assert.deepEqual(G.byLabel({ polygons: polys }, PC), { organism: 175 });
+  close(regionStats(polys).per, 60); // outer boundary of the union
+  close(G.stats({ polygons: polys }, UMPP).area, 200); // without polygon-clipping: legacy sum
 });
 
-test("KNOWN: a self-intersecting (figure-8) polygon has a cancelling shoelace area", { todo: "first polygon of an image is stored as drawn, without cleaning" }, () => {
+test("a hole outside every solid removes nothing; a hole half outside removes only its overlap", () => {
+  close(regionStats([solid(rect(0, 0, 10, 10)), hole(rect(20, 20, 25, 25))]).area, 100);
+  close(regionStats([solid(rect(0, 0, 10, 10)), hole(rect(8, 0, 12, 10))]).area, 80);
+});
+
+test("a self-intersecting (figure-8) polygon counts both lobes", () => {
   const bow = [[0, 0], [10, 10], [10, 0], [0, 10]];
-  assert.equal(G.shoelace(bow), rasterCount([solid(bow)], 12, 12));
+  close(regionStats([solid(bow)]).area, 50);
+  assert.equal(rasterCount([solid(bow)], 12, 12), 50);
+  const pieces = G.normalizePolygon(solid(bow), PC);
+  assert.equal(pieces.length, 2);
+  pieces.forEach((p) => close(G.shoelace(p.points), 25));
+});
+
+test("normalizePolygon leaves a simple polygon untouched", () => {
+  const p = solid(rect(0, 0, 10, 10));
+  assert.equal(G.normalizePolygon(p, PC)[0], p);
+  assert.equal(G.normalizePolygon(p, undefined)[0], p);
+});
+
+test("a pentagram outline is filled like the canvas fills it (nonzero), and the mask agrees", () => {
+  const star5 = [];
+  for (let i = 0; i < 5; i++) { const t = Math.PI / 2 + (i * 4 * Math.PI) / 5; star5.push([G.round3(32 + 28 * Math.cos(t)), G.round3(32 + 28 * Math.sin(t))]); }
+  const mp = G.region([solid(star5)], PC);
+  const a = regionStats([solid(star5)]).area;
+  assert.ok(a > rasterCount([solid(star5)], 64, 64) + 100, "centre pentagon must be filled (even-odd would leave it empty)");
+  assert.ok(Math.abs(rasterRegion(mp, 64, 64) - a) <= 0.5 * G.perimeter(mp[0][0].slice(0, -1)) + 2);
+});
+
+test("property: area of random overlapping, self-intersecting polygons matches their mask (150 cases)", () => {
+  const rand = rng(11);
+  for (let k = 0; k < 150; k++) {
+    const polys = [];
+    for (let m = 1 + Math.floor(rand() * 3); m > 0; m--) {
+      // random vertex order → frequently self-intersecting
+      const pts = []; for (let v = 3 + Math.floor(rand() * 8); v > 0; v--) pts.push([G.round3(4 + 56 * rand()), G.round3(4 + 56 * rand())]);
+      polys.push(solid(pts));
+    }
+    const mp = G.region(polys, PC), st = regionStats(polys);
+    const bound = 0.5 * mp.reduce((t, pg) => t + pg.reduce((u, r) => u + G.perimeter(r.slice(0, -1)), 0), 0) + 2;
+    const diff = Math.abs(rasterRegion(mp, 64, 64) - st.area);
+    assert.ok(diff <= bound, `case ${k}: |mask − area| = ${diff.toFixed(2)} > ${bound.toFixed(2)}`);
+    assert.ok(st.area <= polys.reduce((t, p) => t + G.region([p], PC).reduce((u, pg) => u + G.regionArea([pg]), 0), 0) + 0.01);
+  }
+});
+
+test("maskFromPolygons matches the independent pixel-centre reference exactly", () => {
+  const rand = rng(5);
+  const half = [solid(rect(10.5, 10.5, 60.5, 50.5))]; // edges through pixel centres: the biased case for canvas masks
+  assert.equal(G.maskFromPolygons(half, 80, 80, PC).count, rasterCount(half, 80, 80));
+  assert.equal(G.maskFromPolygons([solid(rect(3, 4, 13, 24))], 32, 32, PC).count, 200);
+  for (let k = 0; k < 150; k++) {
+    const polys = [solid(star(rand, 32, 32, 4, 28, 3 + Math.floor(rand() * 25)))];
+    if (rand() < 0.5) polys.push(hole(star(rand, 32, 32, 1, 8, 3 + Math.floor(rand() * 6))));
+    if (rand() < 0.5) polys.push(solid(star(rand, 20 + 24 * rand(), 20 + 24 * rand(), 3, 16, 3 + Math.floor(rand() * 10))));
+    const { mask, count } = G.maskFromPolygons(polys, 64, 64, PC);
+    assert.equal(count, rasterRegion(G.region(polys, PC), 64, 64), `case ${k}`);
+    assert.equal(mask.length, 64 * 64);
+  }
+  // fallback without polygon-clipping: solids painted, holes cleared
+  assert.equal(G.maskFromPolygons([solid(rect(0, 0, 10, 10)), hole(rect(2, 2, 5, 5))], 16, 16).count, 91);
+});
+
+test("union with a self-intersecting new polygon merges its cleaned pieces", () => {
+  const polys = [solid(rect(0, 0, 10, 10))];
+  const r = G.applyBoolean(polys, solid([[5, 5], [15, 15], [15, 5], [5, 15]]), "union", PC);
+  assert.equal(r.applied, true);
+  close(regionStats(polys).area, 100 + 25 + 25 - 12.5);
 });

@@ -20,9 +20,10 @@ Images never leave your computer: they're opened with the browser's File API and
 
 ## Measurement definitions
 - Vertices are stored in continuous image-pixel coordinates; pixel *(i, j)* covers [i, i+1) × [j, j+1), origin top-left.
-- `area_px_polygon`: exact shoelace area of all non-hole polygons minus hole polygons, after clipping every polygon to the image rectangle (vertices cannot lie outside the image). Overlapping non-hole polygons are counted twice, so don't overlap them.
-- `area_px_mask`: number of foreground pixels in the exported binary mask (rasterised at 50 % pixel coverage). It's comparable with pixel-count areas from segmentation pipelines.
-- `area_px_by_label`: net polygon area for each polygon label (e.g. `body=2000;appendage=300` in the CSV).
+- `area_px_polygon`: exact area of the region the annotation covers, (union of non-hole polygons) minus (union of hole polygons), after clipping every polygon to the image rectangle (vertices cannot lie outside the image). Overlapping polygons count once, a hole outside every area removes nothing, and a self-intersecting outline is filled as the canvas draws it (nonzero rule). Since v0.3.0; up to v0.2.x it was the plain sum of polygon areas, which counted overlaps twice.
+- New polygons are cleaned when closed: an outline that crosses itself is stored as simple pieces.
+- `area_px_mask`: number of foreground pixels in the exported binary mask, which rasterises the same region: a pixel is foreground when its centre lies inside it. Since v0.3.0; earlier versions thresholded the browser's anti-aliased fill, which biased masks upwards by about 1–2 %. It's comparable with pixel-count areas from segmentation pipelines.
+- `area_px_by_label`: region area for each polygon label (e.g. `body=2000;appendage=300` in the CSV).
 - `area_mm2_* = area_px × (µm/px)² / 10⁶`.
 
 ## Modes

@@ -35,7 +35,7 @@ node --test tests/                                  # unit + property tests, no 
 uv run tests/check_export.py annotations.json       # independent check of an export with shapely
 ```
 
-`check_export.py` recomputes every area with shapely, rasterises a pixel-centre mask and flags invalid (self-intersecting) polygons, overlapping solids, holes outside a solid and any mismatch. Tests marked `todo` document known limitations; they do not fail the run.
+`check_export.py` recomputes every area with shapely, rasterises a pixel-centre mask and flags any mismatch with the exported areas and mask counts. It also reports self-intersecting polygons, overlapping solids and holes outside a solid, which biased areas up to v0.2.x.
 
 ## Manual test checklist
 

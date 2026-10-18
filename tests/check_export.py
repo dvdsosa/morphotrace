@@ -5,11 +5,12 @@
 """Independent check of a MorphoTrace annotations.json with shapely.
 
 For every annotated image it recomputes, outside the browser:
-  * the polygon area the tool reports (sum of solids minus holes, as stats() does);
+  * the polygon area the tool should report: up to v0.2.x the sum of solids minus holes; from v0.3.0
+    the area of the covered region (overlaps once, self-intersections resolved);
   * the geometric area of (union of solids) minus (union of holes) with shapely;
   * the pixel count of a mask that marks pixels whose centre is inside that geometry;
-and flags invalid (self-intersecting) polygons, overlapping solids, holes outside any solid and any
-disagreement beyond tolerance. Exit code 1 if any image is flagged.
+and flags any disagreement beyond tolerance. Invalid (self-intersecting) polygons, overlapping solids and
+holes outside any solid are flagged up to v0.2.x, where they bias the area, and only noted from v0.3.0. Exit code 1 if any image is flagged.
 
     uv run tests/check_export.py annotations.json [--csv report.csv]
 """
@@ -38,37 +39,38 @@ def mask_count(geom, w, h):
     return int(shapely.contains_xy(geom, xs.ravel(), ys.ravel()).sum())
 
 
-def check_image(r, umpp):
+def check_image(r, umpp, region_areas):
     polys = r.get("polygons") or []
     solids = [p["points"] for p in polys if not p.get("hole")]
     holes = [p["points"] for p in polys if p.get("hole")]
-    flags = []
+    flags, notes = [], []  # notes: harmless from v0.3.0, where areas come from the covered region
 
     naive = sum(shoelace(p) for p in solids) - sum(shoelace(p) for p in holes)
     S = [Polygon(p) for p in solids]
     H = [Polygon(p) for p in holes]
     if not all(g.is_valid for g in S + H):
-        flags.append("invalid_polygon")
+        (notes if region_areas else flags).append("invalid_polygon")
     S = [shapely.make_valid(g) for g in S]
     H = [shapely.make_valid(g) for g in H]
     solid_u = unary_union(S) if S else Polygon()
     hole_u = unary_union(H) if H else Polygon()
     if S and solid_u.area < sum(g.area for g in S) - AREA_TOL:
-        flags.append("overlapping_solids")
+        (notes if region_areas else flags).append("overlapping_solids")
     if H and hole_u.difference(solid_u).area > AREA_TOL:
-        flags.append("hole_outside_solid")
+        (notes if region_areas else flags).append("hole_outside_solid")
     geom = solid_u.difference(hole_u)
 
     tool = r.get("area_px_polygon")
-    if tool is not None and abs(tool - naive) > AREA_TOL:
+    expected = geom.area if region_areas else naive
+    if tool is not None and abs(tool - expected) > AREA_TOL:
         flags.append("stored_area_mismatch")
-    if abs(naive - geom.area) > AREA_TOL:
+    if not region_areas and abs(naive - geom.area) > AREA_TOL:
         flags.append("polygon_vs_geometry")
     count = mask_count(geom, r.get("width"), r.get("height"))
     bound = 0.5 * geom.length + 2  # pixel-centre sampling error ≲ half a pixel per unit boundary
     if abs(count - geom.area) > bound:
         flags.append("mask_vs_area")
-    if "area_px_mask" in r and abs(r["area_px_mask"] - count) > bound:
+    if "area_px_mask" in r and abs(r["area_px_mask"] - count) > (2 if region_areas else bound):  # exact from v0.3.0
         flags.append("exported_mask_mismatch")
 
     return {
@@ -78,7 +80,7 @@ def check_image(r, umpp):
         "mask_px": count, "area_px_mask_exported": r.get("area_px_mask", ""),
         "mask_minus_area_pct": round(100 * (count - geom.area) / geom.area, 3) if geom.area else "",
         "area_mm2_shapely": geom.area * umpp**2 / 1e6,
-        "flags": ";".join(flags),
+        "flags": ";".join(flags), "notes": ";".join(notes),
     }
 
 
@@ -92,8 +94,10 @@ def main():
     for path in a.json:
         obj = json.load(open(path))
         umpp = float(obj.get("um_per_px") or 0)
+        version = tuple(int(v) for v in str((obj.get("tool") or {}).get("version", "0")).split(".")[:2] if v.isdigit())
+        region_areas = version >= (0, 3)
         imgs = [r for r in obj.get("images", []) if r.get("status") == "annotated"]
-        out = [dict(check_image(r, umpp), source=path) for r in imgs]
+        out = [dict(check_image(r, umpp, region_areas), source=path) for r in imgs]
         rows += out
         bad = [o for o in out if o["flags"]]
         pct = np.array([o["mask_minus_area_pct"] for o in out if o["mask_minus_area_pct"] != ""], float)

@@ -3,7 +3,7 @@
 (function () {
   "use strict";
 
-  const TOOL = { name: "MorphoTrace", version: "0.2.6" };
+  const TOOL = { name: "MorphoTrace", version: "0.3.0" };
   const STORE_KEY = "morphotrace.v1";
   const HIT_PX = 8;          // screen-space hit tolerance
   const FREEHAND_STEP = 3;   // screen px between freehand samples
@@ -49,8 +49,18 @@
 
   // ---------- geometry (pure helpers in geometry.js) ----------
   const G = window.MorphoGeom;
-  const { round3, shoelace, pointInPoly, distToSeg, clipToImage, clampPt, clipAnnotation, byLabel } = G;
-  const stats = (ann) => G.stats(ann, settings.umpp);
+  const { round3, shoelace, pointInPoly, distToSeg, clipToImage, clampPt, clipAnnotation } = G;
+  // Areas come from the covered region (polygon unions), so stats() is cached on the polygon content:
+  // the status bar asks for it on every redraw.
+  const statsCache = new WeakMap();
+  function stats(ann) {
+    const sig = JSON.stringify(ann.polygons) + "|" + settings.umpp, hit = statsCache.get(ann);
+    if (hit && hit.sig === sig) return hit.st;
+    const st = G.stats(ann, settings.umpp, window.polygonClipping);
+    statsCache.set(ann, { sig, st });
+    return st;
+  }
+  const byLabel = (ann) => G.byLabel(ann, window.polygonClipping);
   const toImg = (sx, sy) => [(sx - view.tx) / view.s, (sy - view.ty) / view.s];
   const toScr = (x, y) => [x * view.s + view.tx, y * view.s + view.ty];
 
@@ -155,7 +165,7 @@
       commitUndo(snapshot); changed(); flash("Area subtracted (Ctrl/⌘+Z to undo)."); return;
     }
     const r = settings.merge !== false ? applyBoolean(polys, poly, "union") : 0;
-    if (!r) { polys.push(poly); selected = polys.length - 1; }
+    if (!r) { polys.push(...G.normalizePolygon(poly, window.polygonClipping)); selected = polys.length - 1; }
     commitUndo(snapshot); changed();
     if (r) flash("Merged with the overlapping area (Ctrl/⌘+Z to undo).");
   }
@@ -527,23 +537,11 @@
 
   // ---------- export ----------
   async function rasterMask(key) {
-    const a = annotations[key];
+    // pixel-centre mask of the measured region (geometry.js), encoded as a black / white PNG
+    const a = annotations[key], { mask, count } = G.maskFromPolygons(a.polygons, a.w, a.h, window.polygonClipping);
     const c = document.createElement("canvas"); c.width = a.w; c.height = a.h;
-    const g = c.getContext("2d");
-    g.fillStyle = "#000"; g.fillRect(0, 0, a.w, a.h);
-    const fillPolys = (hole) => {
-      g.fillStyle = hole ? "#000" : "#fff";
-      for (const p of a.polygons.filter((q) => !!q.hole === hole)) {
-        g.beginPath(); p.points.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y))); g.closePath(); g.fill();
-      }
-    };
-    fillPolys(false); fillPolys(true);
-    const id = g.getImageData(0, 0, a.w, a.h), d = id.data;
-    let count = 0;
-    for (let i = 0; i < d.length; i += 4) {
-      const v = d[i] >= 128 ? 255 : 0; if (v) count++;
-      d[i] = d[i + 1] = d[i + 2] = v; d[i + 3] = 255;
-    }
+    const g = c.getContext("2d"), id = g.createImageData(a.w, a.h), d = id.data;
+    for (let i = 0; i < mask.length; i++) { const v = mask[i] ? 255 : 0; d[4 * i] = d[4 * i + 1] = d[4 * i + 2] = v; d[4 * i + 3] = 255; }
     g.putImageData(id, 0, 0);
     const blob = await new Promise((res) => c.toBlob(res, "image/png"));
     return { bytes: new Uint8Array(await blob.arrayBuffer()), count };
