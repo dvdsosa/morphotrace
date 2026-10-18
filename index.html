@@ -6,7 +6,7 @@
 <title>MorphoTrace</title>
 <meta name="description" content="Browser-based polygon annotation tool for projected-area ground truth. Images never leave your computer.">
 <script>try { const t = localStorage.getItem("morphotrace.theme"); if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; } catch (e) {}</script>
-<link rel="stylesheet" href="style.css?v=0.2.5">
+<link rel="stylesheet" href="style.css?v=0.3.1">
 </head>
 <body>
 <header class="topbar">
@@ -157,16 +157,21 @@
         <li><kbd>X</kbd> mark image unusable (with reason)</li>
       </ul>
       <h3>Measurement</h3>
-      <p>Area is computed exactly from the polygon vertices (shoelace formula, holes subtracted) and also from the rasterised binary mask. Physical area uses the scale field: mm² = px × (µm/px)² / 10⁶.</p>
-      <p>Work is autosaved in this browser. Export JSON regularly as a backup.</p>
+      <p>Area is computed exactly from the polygon vertices as the area the outlines cover (overlaps count once, holes subtracted), and also as the pixel count of the binary mask. Physical area uses the scale field: mm² = px × (µm/px)² / 10⁶.</p>
+      <p>Work is autosaved in this browser; a red banner appears if autosave fails. Export JSON regularly as a backup.</p>
     </div>
   </div>
   <form method="dialog"><button class="btn primary">Close</button></form>
 </dialog>
 
+<div id="saveWarn" class="save-warn" role="alert" hidden>
+  <span id="saveWarnMsg"></span>
+  <button class="btn" id="saveWarnExport" type="button">Export JSON now</button>
+</div>
+
 <script src="vendor/polygon-clipping-0.15.7.umd.min.js"></script>
-<script src="geometry.js?v=0.3.0"></script>
-<script src="zip.js?v=0.3.0"></script>
-<script src="app.js?v=0.3.0"></script>
+<script src="geometry.js?v=0.3.1"></script>
+<script src="zip.js?v=0.3.1"></script>
+<script src="app.js?v=0.3.1"></script>
 </body>
 </html>

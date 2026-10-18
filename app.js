@@ -3,7 +3,7 @@
 (function () {
   "use strict";
 
-  const TOOL = { name: "MorphoTrace", version: "0.3.0" };
+  const TOOL = { name: "MorphoTrace", version: "0.3.1" };
   const STORE_KEY = "morphotrace.v1";
   const HIT_PX = 8;          // screen-space hit tolerance
   const FREEHAND_STEP = 3;   // screen px between freehand samples
@@ -30,21 +30,54 @@
   const undoStacks = {}, redoStacks = {};
 
   // ---------- persistence ----------
+  // Autosave must never fail silently: a persistent warning (with an export button) stays up while the
+  // last write failed, and closing the tab then asks for confirmation if there are unexported changes.
+  const STORE_QUOTA = 5e6;         // typical localStorage quota, in UTF-16 characters
+  let storageOk = true, unexported = false, nearFullWarned = false;
+  const mb = (chars) => `${(chars / 1e6).toFixed(1)} MB`;
+  function storageWarn(msg) {
+    $("saveWarnMsg").textContent = msg || "";
+    $("saveWarn").hidden = !msg;
+  }
   function loadStore() {
+    let raw;
+    try { raw = localStorage.getItem(STORE_KEY); }
+    catch (e) { storageOk = false; storageWarn("Autosave is off: this browser blocks local storage (private window or blocked site data). Export JSON before closing the page."); return; }
+    if (!raw) return;
     try {
-      const raw = localStorage.getItem(STORE_KEY);
-      if (!raw) return;
       const data = JSON.parse(raw);
       if (data.settings) settings = Object.assign(settings, data.settings);
       if (data.annotations) annotations = data.annotations;
-    } catch (e) { /* storage unavailable: run without autosave */ }
+    } catch (e) {
+      // keep the unreadable copy instead of overwriting it with the next autosave
+      try { localStorage.setItem(STORE_KEY + ".unreadable", raw); localStorage.removeItem(STORE_KEY); } catch (e2) { /* ignore */ }
+      storageWarn(`The previous autosave could not be read; it was kept under "${STORE_KEY}.unreadable". Import your last exported JSON to continue.`);
+    }
+  }
+  // Writes the autosave now; returns false (and shows the warning) if the browser refused it.
+  function writeStore() {
+    const raw = JSON.stringify({ settings, annotations });
+    try { localStorage.setItem(STORE_KEY, raw); }
+    catch (e) {
+      const full = e && (e.name === "QuotaExceededError" || e.name === "NS_ERROR_DOM_QUOTA_REACHED" || e.code === 22 || e.code === 1014);
+      storageOk = false;
+      storageWarn(full
+        ? `Autosave failed: browser storage is full (${mb(raw.length)} of work to save). Export JSON now so no work is lost.`
+        : "Autosave failed: this browser blocks local storage (private window or blocked site data). Export JSON before closing the page.");
+      return false;
+    }
+    if (!storageOk) { storageOk = true; storageWarn(""); flash("Autosave is working again."); }
+    if (!nearFullWarned && raw.length > 0.8 * STORE_QUOTA) {
+      nearFullWarned = true;
+      flash(`Autosave uses ${mb(raw.length)}, close to the browser limit (about ${mb(STORE_QUOTA)}). Export JSON regularly.`);
+    }
+    return true;
   }
   let saveTimer = 0;
   function save() {
+    unexported = true;
     clearTimeout(saveTimer);
-    saveTimer = setTimeout(() => {
-      try { localStorage.setItem(STORE_KEY, JSON.stringify({ settings, annotations })); } catch (e) { /* ignore */ }
-    }, 300);
+    saveTimer = setTimeout(writeStore, 300);
   }
 
   // ---------- geometry (pure helpers in geometry.js) ----------
@@ -574,7 +607,7 @@
     document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
   }
   const stamp = () => new Date().toISOString().slice(0, 16).replace(/[:T]/g, "-");
-  $("exportJson").onclick = () => download(new Blob([JSON.stringify(exportObject(), null, 1)], { type: "application/json" }), `annotations_${stamp()}.json`);
+  $("exportJson").onclick = () => { download(new Blob([JSON.stringify(exportObject(), null, 1)], { type: "application/json" }), `annotations_${stamp()}.json`); unexported = false; };
   $("exportCsv").onclick = () => download(new Blob([toCsv(exportObject())], { type: "text/csv" }), `areas_${stamp()}.csv`);
   $("exportZip").onclick = async () => {
     const z = new ZipWriter(), counts = {};
@@ -587,7 +620,7 @@
     const obj = exportObject(counts);
     z.add("annotations.json", JSON.stringify(obj, null, 1));
     z.add("areas.csv", toCsv(obj));
-    download(z.blob(), `morphotrace_${stamp()}.zip`);
+    download(z.blob(), `morphotrace_${stamp()}.zip`); unexported = false;
   };
 
   // ---------- import ----------
@@ -662,7 +695,11 @@
   bindDisplay("bright", "bright"); bindDisplay("contr", "contr"); bindDisplay("invert", "invert", "checked"); bindDisplay("fillPolys", "fill", "checked");
   $("resetView").onclick = () => { display = { bright: 100, contr: 100, invert: false, fill: display.fill }; $("bright").value = 100; $("contr").value = 100; $("invert").checked = false; draw(); };
   document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") { flushTime(); save(); } else shownAt = performance.now(); });
-  window.addEventListener("beforeunload", () => { flushTime(); try { localStorage.setItem(STORE_KEY, JSON.stringify({ settings, annotations })); } catch (e) { /* ignore */ } });
+  $("saveWarnExport").onclick = () => $("exportJson").click();
+  window.addEventListener("beforeunload", (e) => {
+    flushTime(); clearTimeout(saveTimer);
+    if (!writeStore() && unexported) { e.preventDefault(); e.returnValue = ""; } // browser asks "leave page?"
+  });
   new ResizeObserver(resize).observe(wrap);
 
   // colour theme: "light", "dark" or "auto" (follow the system); stored per browser
