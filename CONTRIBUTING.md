@@ -28,29 +28,39 @@ Please do not attach images you are not allowed to share. MorphoTrace never uplo
 
 ## Automated tests
 
-The measurement code (areas, clipping, merge/subtract, CSV) lives in `geometry.js`, with no DOM, so it can be tested outside the browser. Run from the repository root:
+Run everything with one command (GitHub Actions runs the same script on every push and pull request):
 
 ```bash
-node --test tests/                                  # unit + property tests, no install needed (Node ≥ 18)
-uv run tests/check_export.py annotations.json       # independent check of an export with shapely
+tests/run-all.sh                    # all checks, Chromium + Firefox + WebKit
+BROWSERS=chromium tests/run-all.sh  # one browser
+PERF=1 tests/run-all.sh             # also the performance benchmark
 ```
 
-Browser checks live in `tests/e2e/` and run with [playwright-cli](https://github.com/microsoft/playwright-cli) against a local server:
+It needs Node ≥ 18, Python 3 and [playwright-cli](https://github.com/microsoft/playwright-cli) (`npm i -g @playwright/cli`, then `playwright-cli install-browser firefox` and `webkit`). ESLint and html-validate run through `npx`, pinned in the script; there is still no `package.json`.
+
+| Check | What it covers |
+|---|---|
+| version consistency | `app.js`, `CITATION.cff` and the `?v=` cache-busting parameters in `index.html` carry the same version |
+| `tests/geometry.test.js` | areas, clipping, merge/subtract, masks and CSV in `geometry.js`, with seeded property tests (`node --test tests/`) |
+| ESLint, html-validate | `eslint.config.js` and `.htmlvalidate.json` |
+| `tests/e2e/core.e2e.js` | drawing, editing, undo/redo, zoom, navigation, display adjustments, exports (mask PNG decoded), import, persistence |
+| `tests/e2e/storage.e2e.js` | autosave failures (full, blocked, unreadable storage) are reported, never silent |
+| `tests/e2e/a11y.e2e.js` | axe-core WCAG 2.1 A/AA in 12 UI states, keyboard access, announcements (loads axe from cdnjs) |
+| `tests/e2e/perf.e2e.js` | 150 images of 800×600 px, a 5000-vertex outline, exports; reports timings |
+
+The e2e files are plain functions for `playwright-cli run-code`; each returns a report with one line per check instead of stopping at the first failure. WebKit is the engine behind Safari.
+
+To check an exported file independently of the tool:
 
 ```bash
-python3 -m http.server 8765 &
-playwright-cli install-browser firefox && playwright-cli install-browser webkit   # once
-for b in chromium firefox webkit; do
-  playwright-cli -s=$b open --browser=$b http://localhost:8765/
-  playwright-cli -s=$b run-code --filename=tests/e2e/core.e2e.js      # drawing, editing, zoom, navigation, display, exports, import, persistence
-  playwright-cli -s=$b run-code --filename=tests/e2e/storage.e2e.js   # autosave failures are reported, never silent
-  playwright-cli -s=$b run-code --filename=tests/e2e/a11y.e2e.js      # axe-core WCAG 2.1 AA in several states + keyboard (needs network for axe)
-done
+uv run tests/check_export.py annotations.json
 ```
 
-`core.e2e.js` returns a report with one line per check instead of stopping at the first failure. WebKit is the engine behind Safari.
+It recomputes every area with shapely, rasterises a pixel-centre mask and flags any mismatch with the exported areas and mask counts. It also reports self-intersecting polygons, overlapping solids and holes outside a solid, which biased areas up to v0.2.x.
 
-`check_export.py` recomputes every area with shapely, rasterises a pixel-centre mask and flags any mismatch with the exported areas and mask counts. It also reports self-intersecting polygons, overlapping solids and holes outside a solid, which biased areas up to v0.2.x.
+## Releasing a version
+
+Bump the version in `app.js` (`TOOL.version`), `CITATION.cff` and every `?v=` in `index.html` together; `tests/run-all.sh` fails if they differ. The header and the help dialog show `TOOL.version`, and every export records it.
 
 ## Manual test checklist
 

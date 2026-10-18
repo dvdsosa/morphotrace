@@ -1,0 +1,7 @@
+{
+  "extends": ["html-validate:recommended"],
+  "rules": {
+    "doctype-style": ["error", { "style": "lowercase" }],
+    "prefer-native-element": ["error", { "exclude": ["radio"] }]
+  }
+}

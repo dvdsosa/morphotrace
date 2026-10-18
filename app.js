@@ -3,8 +3,10 @@
 (function () {
   "use strict";
 
-  const TOOL = { name: "MorphoTrace", version: "0.3.3" };
+  const TOOL = { name: "MorphoTrace", version: "0.3.5" };
   const STORE_KEY = "morphotrace.v1";
+  // single source of the version: shown in the header and help, and written into every export
+  for (const id of ["appVersion", "helpVersion"]) { const el = document.getElementById(id); if (el) el.textContent = "v" + TOOL.version; }
   const HIT_PX = 8;          // screen-space hit tolerance
   const FREEHAND_STEP = 3;   // screen px between freehand samples
 
@@ -19,7 +21,7 @@
   let mode = "draw";               // "draw" (add area), "subtract" (remove area) or "edit" (select / vertices)
   let drawing = null;              // {pts: [[x,y], ...]}
   let selected = -1;
-  let view = { s: 1, tx: 0, ty: 0 };
+  const view = { s: 1, tx: 0, ty: 0 };
   let display = { bright: 100, contr: 100, invert: false, fill: true };
   let pointer = { x: 0, y: 0, inside: false };
   let drag = null;                 // {kind: 'pan'|'vertex'|'free', ...}
@@ -82,7 +84,7 @@
 
   // ---------- geometry (pure helpers in geometry.js) ----------
   const G = window.MorphoGeom;
-  const { round3, shoelace, pointInPoly, distToSeg, clipToImage, clampPt, clipAnnotation } = G;
+  const { round3, shoelace, pointInPoly, clipToImage, clampPt, clipAnnotation } = G;
   // Areas come from the covered region (polygon unions), so stats() is cached on the polygon content:
   // the status bar asks for it on every redraw.
   const statsCache = new WeakMap();
@@ -480,7 +482,6 @@
     } else {
       const hv = hitVertex(sx, sy, selected) || hitVertex(sx, sy, -1);
       if (hv) {
-        const polys = annotations[images[cur].key].polygons;
         selected = hv.pi;
         if (e.altKey) { deleteVertex(hv.pi, hv.vi); return; }
         pushUndo();
@@ -649,7 +650,7 @@
       if (a.skip || !a.polygons.length || !a.w) continue;
       const { bytes, count } = await rasterMask(k);
       counts[k] = count;
-      z.add("masks/" + k.replace(/\.[^.\/]+$/, "") + "_mask.png", bytes);
+      z.add("masks/" + k.replace(/\.[^./]+$/, "") + "_mask.png", bytes);
     }
     const obj = exportObject(counts);
     z.add("annotations.json", JSON.stringify(obj, null, 1));
@@ -747,11 +748,20 @@
     if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; else delete document.documentElement.dataset.theme;
     const sw = document.querySelector(".theme-switch");
     sw.dataset.value = t;
-    sw.querySelectorAll("button").forEach((b) => b.setAttribute("aria-checked", String(b.dataset.themeChoice === t)));
+    sw.querySelectorAll("button").forEach((b) => { const on = b.dataset.themeChoice === t; b.setAttribute("aria-checked", String(on)); b.tabIndex = on ? 0 : -1; });
     try { localStorage.setItem("morphotrace.theme", t); } catch (e) { /* ignore */ }
     draw();
   }
   document.querySelectorAll(".theme-switch button").forEach((b) => (b.onclick = () => applyTheme(b.dataset.themeChoice)));
+  // ARIA radio group: one tab stop, arrow keys move the choice (and focus) along light / auto / dark
+  document.querySelector(".theme-switch").addEventListener("keydown", (e) => {
+    const step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key];
+    if (!step) return;
+    e.preventDefault(); e.stopPropagation();
+    const bs = [...document.querySelectorAll(".theme-switch button")], i = bs.indexOf(document.activeElement);
+    const next = bs[(i + step + bs.length) % bs.length];
+    applyTheme(next.dataset.themeChoice); next.focus();
+  });
   let storedTheme = "auto";
   try { storedTheme = localStorage.getItem("morphotrace.theme") || "auto"; } catch (e) { /* ignore */ }
   applyTheme(storedTheme);

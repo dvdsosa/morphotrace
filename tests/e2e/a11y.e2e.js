@@ -58,11 +58,12 @@ async (page) => {
   // Safari's default Tab only visits text fields; Option+Tab visits every control (as WebKit does here)
   const TAB = (await page.evaluate(() => /Version\/.*Safari/.test(navigator.userAgent) && !/Chrome/.test(navigator.userAgent))) ? "Alt+Tab" : "Tab";
   await page.evaluate(() => document.activeElement.blur());
+  let first = null;
   for (let i = 0; i < 80; i++) { // one full cycle through the page's tab stops
     await page.keyboard.press(TAB);
     const el = await page.evaluateHandle(() => document.activeElement);
     if (i > 0 && await page.evaluate(([a, b]) => a === b, [el, first])) break;
-    if (i === 0) var first = el;
+    if (i === 0) first = el;
     tabStops.push(await page.evaluate((e) => e.id || e.className, el));
   }
   check("file pickers are keyboard-reachable (Open images / folder / Import JSON)", ["openFiles", "openDir", "openJson"].every((id) => tabStops.includes(id)), tabStops.join(" "));
@@ -89,6 +90,11 @@ async (page) => {
   check("subtract trace is dashed, not only red", (await page.evaluate(() => window.__dashes.length)) > 0);
   await page.keyboard.press("Enter"); await wait(100);
   check("flash messages are announced (aria-live)", /does not overlap/.test(await page.evaluate(() => document.getElementById("announce").textContent)), await page.evaluate(() => document.getElementById("announce").textContent));
+  await page.focus('.theme-switch [aria-checked="true"]'); await page.keyboard.press("ArrowRight"); await wait(50);
+  const th = await page.evaluate(() => [document.querySelector(".theme-switch").dataset.value, document.activeElement.dataset.themeChoice,
+    [...document.querySelectorAll(".theme-switch button")].filter((b) => b.tabIndex === 0).length]);
+  await page.keyboard.press("ArrowLeft");
+  check("theme switch is a radio group: one tab stop, arrows change the theme", th[0] === "dark" && th[1] === "dark" && th[2] === 1, JSON.stringify(th));
   check("page has one h1 and html lang", await page.evaluate(() => document.querySelectorAll("h1").length === 1 && document.documentElement.lang === "en"));
 
   await fresh();

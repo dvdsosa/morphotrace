@@ -6,11 +6,14 @@
 <title>MorphoTrace</title>
 <meta name="description" content="Browser-based polygon annotation tool for projected-area ground truth. Images never leave your computer.">
 <script>try { const t = localStorage.getItem("morphotrace.theme"); if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; } catch (e) {}</script>
-<link rel="stylesheet" href="style.css?v=0.3.3">
+<link rel="stylesheet" href="style.css?v=0.3.5">
 </head>
 <body>
 <header class="topbar">
+  <div class="brand-group">
   <h1 class="brand">Morpho<span>Trace</span></h1>
+  <a class="version" id="appVersion" href="https://github.com/dvdsosa/morphotrace/releases" target="_blank" rel="noopener" title="Version recorded in every export · release notes">version</a>
+  </div>
   <div class="tb-group">
     <!-- buttons (not labels) so the file pickers can be opened from the keyboard -->
     <button class="btn primary" type="button" id="openFiles" title="Load images (or a folder of class sub-folders)">Open images</button>
@@ -21,12 +24,12 @@
     <input id="jsonInput" type="file" accept=".json,application/json" hidden>
   </div>
   <div class="tb-group">
-    <button class="btn" id="exportJson">Export JSON</button>
-    <button class="btn" id="exportCsv">Export CSV</button>
-    <button class="btn" id="exportZip">Masks (.zip)</button>
+    <button type="button" class="btn" id="exportJson">Export JSON</button>
+    <button type="button" class="btn" id="exportCsv">Export CSV</button>
+    <button type="button" class="btn" id="exportZip">Masks (.zip)</button>
   </div>
   <div class="tb-group tb-util">
-  <button class="btn ghost" id="helpBtn" aria-label="Help">?</button>
+  <button type="button" class="btn ghost" id="helpBtn" aria-label="Help">?</button>
   <div class="theme-switch" role="radiogroup" aria-label="Colour theme" data-value="auto">
     <span class="theme-thumb" aria-hidden="true"></span>
     <button type="button" role="radio" data-theme-choice="light" title="Light theme" aria-label="Light theme">
@@ -57,7 +60,7 @@
       <label class="field">Contrast <input id="contr" type="range" min="40" max="300" value="100"></label>
       <label class="check"><input id="invert" type="checkbox"> Invert</label>
       <label class="check"><input id="fillPolys" type="checkbox" checked> Fill polygons</label>
-      <button class="btn small" id="resetView">Reset display</button>
+      <button type="button" class="btn small" id="resetView">Reset display</button>
     </section>
     <section class="panel grow">
       <h2>Images <span id="progress" class="muted"></span></h2>
@@ -67,37 +70,37 @@
 
   <section class="stage">
     <div class="toolbar">
-      <button class="btn panel-toggle" id="panelBtn" title="Show / hide the side panel" aria-label="Toggle side panel" aria-expanded="true">☰</button>
+      <button type="button" class="btn panel-toggle" id="panelBtn" title="Show / hide the side panel" aria-label="Toggle side panel" aria-expanded="true">☰</button>
       <div class="tb-cluster">
         <div class="seg" role="group" aria-label="Mode">
-          <button class="btn seg-btn active" aria-pressed="true" id="modeDraw" title="Draw (D): add area. Overlapping polygons merge. Alt+first click subtracts one polygon.">Draw</button>
-          <button class="btn seg-btn" aria-pressed="false" id="modeSub" title="Subtract (S): remove area. A polygon fully inside an area makes a hole.">Subtract</button>
-          <button class="btn seg-btn" aria-pressed="false" id="modeEdit" title="Edit (E): select areas, move / add / delete vertices">Edit</button>
+          <button type="button" class="btn seg-btn active" aria-pressed="true" id="modeDraw" title="Draw (D): add area. Overlapping polygons merge. Alt+first click subtracts one polygon.">Draw</button>
+          <button type="button" class="btn seg-btn" aria-pressed="false" id="modeSub" title="Subtract (S): remove area. A polygon fully inside an area makes a hole.">Subtract</button>
+          <button type="button" class="btn seg-btn" aria-pressed="false" id="modeEdit" title="Edit (E): select areas, move / add / delete vertices">Edit</button>
         </div>
-        <button class="btn" id="delBtn" title="Delete the selected polygon (Del) — Edit mode">Delete polygon</button>
+        <button type="button" class="btn" id="delBtn" title="Delete the selected polygon (Del) — Edit mode">Delete polygon</button>
       </div>
       <div class="tb-cluster">
-        <button class="btn" id="undoBtn" title="Undo (Ctrl/⌘+Z)">Undo</button>
-        <button class="btn" id="redoBtn" title="Redo (Ctrl/⌘+Shift+Z)">Redo</button>
+        <button type="button" class="btn" id="undoBtn" title="Undo (Ctrl/⌘+Z)">Undo</button>
+        <button type="button" class="btn" id="redoBtn" title="Redo (Ctrl/⌘+Shift+Z)">Redo</button>
       </div>
       <div class="tb-cluster">
         <div class="seg zoom-group" role="group" aria-label="Zoom">
-          <button class="btn seg-btn" id="zoomOut" title="Zoom out (−)" aria-label="Zoom out">
+          <button type="button" class="btn seg-btn" id="zoomOut" title="Zoom out (−)" aria-label="Zoom out">
             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 21 21M7.5 10.5h6"/></svg>
           </button>
-          <button class="btn seg-btn zoom-pct" id="zoomPct" title="Current zoom. Click: fit the image to the window (F or 0). Double-click: 100% (1)" aria-label="Fit image to window">100%</button>
-          <button class="btn seg-btn" id="zoomIn" title="Zoom in (+)" aria-label="Zoom in">
+          <button type="button" class="btn seg-btn zoom-pct" id="zoomPct" title="Current zoom. Click: fit the image to the window (F or 0). Double-click: 100% (1)" aria-label="Fit image to window">100%</button>
+          <button type="button" class="btn seg-btn" id="zoomIn" title="Zoom in (+)" aria-label="Zoom in">
             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 21 21M7.5 10.5h6M10.5 7.5v6"/></svg>
           </button>
         </div>
       </div>
       <span class="chip" id="clsChip" title="Class = name of the folder that contains the image"></span>
       <div class="tb-cluster tb-end">
-        <button class="btn" id="skipBtn" title="Mark this image as unusable, with a reason (X)">Mark unusable</button>
+        <button type="button" class="btn" id="skipBtn" title="Mark this image as unusable, with a reason (X)">Mark unusable</button>
         <div class="seg nav-group" role="group" aria-label="Image navigation">
-          <button class="btn seg-btn" id="prevBtn" title="Previous image (←)">◀ Prev</button>
-          <button class="btn seg-btn nav-pos" id="navPos" title="Current image / total. Click to go to an image number (G)">– / –</button>
-          <button class="btn seg-btn" id="nextBtn" title="Next image (→)">Next ▶</button>
+          <button type="button" class="btn seg-btn" id="prevBtn" title="Previous image (←)">◀ Prev</button>
+          <button type="button" class="btn seg-btn nav-pos" id="navPos" title="Current image / total. Click to go to an image number (G)">– / –</button>
+          <button type="button" class="btn seg-btn" id="nextBtn" title="Next image (→)">Next ▶</button>
         </div>
       </div>
     </div>
@@ -118,7 +121,7 @@
 </main>
 
 <dialog id="help">
-  <h2>MorphoTrace — help</h2>
+  <h2>MorphoTrace <span class="muted" id="helpVersion"></span> — help</h2>
   <div class="help-grid">
     <div>
       <h3>Draw (D): add area</h3>
@@ -159,7 +162,7 @@
       <p>Work is autosaved in this browser; a red banner appears if autosave fails. Export JSON regularly as a backup.</p>
     </div>
   </div>
-  <form method="dialog"><button class="btn primary">Close</button></form>
+  <form method="dialog"><button type="submit" class="btn primary">Close</button></form>
 </dialog>
 
 <div id="announce" class="sr-only" aria-live="polite"></div>
@@ -169,8 +172,8 @@
 </div>
 
 <script src="vendor/polygon-clipping-0.15.7.umd.min.js"></script>
-<script src="geometry.js?v=0.3.3"></script>
-<script src="zip.js?v=0.3.3"></script>
-<script src="app.js?v=0.3.3"></script>
+<script src="geometry.js?v=0.3.5"></script>
+<script src="zip.js?v=0.3.5"></script>
+<script src="app.js?v=0.3.5"></script>
 </body>
 </html>
