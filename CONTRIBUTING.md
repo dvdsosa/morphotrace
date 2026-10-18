@@ -44,6 +44,7 @@ for b in chromium firefox webkit; do
   playwright-cli -s=$b open --browser=$b http://localhost:8765/
   playwright-cli -s=$b run-code --filename=tests/e2e/core.e2e.js      # drawing, editing, zoom, navigation, display, exports, import, persistence
   playwright-cli -s=$b run-code --filename=tests/e2e/storage.e2e.js   # autosave failures are reported, never silent
+  playwright-cli -s=$b run-code --filename=tests/e2e/a11y.e2e.js      # axe-core WCAG 2.1 AA in several states + keyboard (needs network for axe)
 done
 ```
 

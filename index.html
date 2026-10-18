@@ -6,21 +6,19 @@
 <title>MorphoTrace</title>
 <meta name="description" content="Browser-based polygon annotation tool for projected-area ground truth. Images never leave your computer.">
 <script>try { const t = localStorage.getItem("morphotrace.theme"); if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; } catch (e) {}</script>
-<link rel="stylesheet" href="style.css?v=0.3.2">
+<link rel="stylesheet" href="style.css?v=0.3.3">
 </head>
 <body>
 <header class="topbar">
-  <div class="brand">Morpho<span>Trace</span></div>
+  <h1 class="brand">Morpho<span>Trace</span></h1>
   <div class="tb-group">
-    <label class="btn primary" title="Load images (or a folder of class sub-folders)">
-      Open images<input id="fileInput" type="file" accept="image/*" multiple hidden>
-    </label>
-    <label class="btn" title="Load a whole folder; parent folder name is recorded as class">
-      Open folder<input id="dirInput" type="file" webkitdirectory multiple hidden>
-    </label>
-    <label class="btn" title="Resume from a previously exported annotations.json">
-      Import JSON<input id="jsonInput" type="file" accept=".json,application/json" hidden>
-    </label>
+    <!-- buttons (not labels) so the file pickers can be opened from the keyboard -->
+    <button class="btn primary" type="button" id="openFiles" title="Load images (or a folder of class sub-folders)">Open images</button>
+    <input id="fileInput" type="file" accept="image/*" multiple hidden>
+    <button class="btn" type="button" id="openDir" title="Load a whole folder; parent folder name is recorded as class">Open folder</button>
+    <input id="dirInput" type="file" webkitdirectory multiple hidden>
+    <button class="btn" type="button" id="openJson" title="Resume from a previously exported annotations.json">Import JSON</button>
+    <input id="jsonInput" type="file" accept=".json,application/json" hidden>
   </div>
   <div class="tb-group">
     <button class="btn" id="exportJson">Export JSON</button>
@@ -72,9 +70,9 @@
       <button class="btn panel-toggle" id="panelBtn" title="Show / hide the side panel" aria-label="Toggle side panel" aria-expanded="true">☰</button>
       <div class="tb-cluster">
         <div class="seg" role="group" aria-label="Mode">
-          <button class="btn seg-btn active" id="modeDraw" title="Draw (D): add area. Overlapping polygons merge. Alt+first click subtracts one polygon.">Draw</button>
-          <button class="btn seg-btn" id="modeSub" title="Subtract (S): remove area. A polygon fully inside an area makes a hole.">Subtract</button>
-          <button class="btn seg-btn" id="modeEdit" title="Edit (E): select areas, move / add / delete vertices">Edit</button>
+          <button class="btn seg-btn active" aria-pressed="true" id="modeDraw" title="Draw (D): add area. Overlapping polygons merge. Alt+first click subtracts one polygon.">Draw</button>
+          <button class="btn seg-btn" aria-pressed="false" id="modeSub" title="Subtract (S): remove area. A polygon fully inside an area makes a hole.">Subtract</button>
+          <button class="btn seg-btn" aria-pressed="false" id="modeEdit" title="Edit (E): select areas, move / add / delete vertices">Edit</button>
         </div>
         <button class="btn" id="delBtn" title="Delete the selected polygon (Del) — Edit mode">Delete polygon</button>
       </div>
@@ -104,7 +102,7 @@
       </div>
     </div>
     <div class="canvas-wrap" id="wrap">
-      <canvas id="cv"></canvas>
+      <canvas id="cv" role="img" aria-label="No image loaded"></canvas>
       <div class="empty" id="empty">
         <p><strong>Open images</strong> or drop them here.</p>
         <p class="muted">Images are processed locally in your browser and are never uploaded.</p>
@@ -164,14 +162,15 @@
   <form method="dialog"><button class="btn primary">Close</button></form>
 </dialog>
 
+<div id="announce" class="sr-only" aria-live="polite"></div>
 <div id="saveWarn" class="save-warn" role="alert" hidden>
   <span id="saveWarnMsg"></span>
   <button class="btn" id="saveWarnExport" type="button">Export JSON now</button>
 </div>
 
 <script src="vendor/polygon-clipping-0.15.7.umd.min.js"></script>
-<script src="geometry.js?v=0.3.2"></script>
-<script src="zip.js?v=0.3.2"></script>
-<script src="app.js?v=0.3.2"></script>
+<script src="geometry.js?v=0.3.3"></script>
+<script src="zip.js?v=0.3.3"></script>
+<script src="app.js?v=0.3.3"></script>
 </body>
 </html>

@@ -3,7 +3,7 @@
 (function () {
   "use strict";
 
-  const TOOL = { name: "MorphoTrace", version: "0.3.2" };
+  const TOOL = { name: "MorphoTrace", version: "0.3.3" };
   const STORE_KEY = "morphotrace.v1";
   const HIT_PX = 8;          // screen-space hit tolerance
   const FREEHAND_STEP = 3;   // screen px between freehand samples
@@ -372,7 +372,7 @@
         const [ix, iy] = toImg(pointer.x, pointer.y); const [sx, sy] = toScr(ix, iy); ctx.lineTo(sx, sy);
       }
       const dcol = drawing.subtract ? "#ff4d4d" : "#7CFC00";
-      ctx.strokeStyle = dcol; ctx.lineWidth = 1.5; ctx.stroke();
+      ctx.strokeStyle = dcol; ctx.lineWidth = 1.5; ctx.setLineDash(drawing.subtract ? [6, 4] : []); ctx.stroke(); ctx.setLineDash([]);
       drawVertices(pts, dcol);
       const [fx, fy] = toScr(pts[0][0], pts[0][1]);
       if (pts.length >= 3 && Math.hypot(fx - pointer.x, fy - pointer.y) <= HIT_PX) {
@@ -403,8 +403,9 @@
   let flashTimer = 0, flashUntil = 0;
   function flash(msg) {
     flashUntil = performance.now() + 2500;
-    $("stHint").textContent = $("stHint").title = msg; $("stHint").style.color = "#e0a030";
-    clearTimeout(flashTimer); flashTimer = setTimeout(() => { flashUntil = 0; $("stHint").style.color = ""; draw(); }, 2500);
+    $("stHint").textContent = $("stHint").title = msg; $("stHint").classList.add("flash");
+    $("announce").textContent = msg; // read out by screen readers
+    clearTimeout(flashTimer); flashTimer = setTimeout(() => { flashUntil = 0; $("stHint").classList.remove("flash"); draw(); }, 2500);
   }
   function updateStatus() {
     if (cur < 0) { $("stFile").textContent = "—"; $("stArea").textContent = "Area: —"; $("stHint").textContent = ""; $("clsChip").textContent = ""; return; }
@@ -424,13 +425,17 @@
     if (performance.now() >= flashUntil) $("stHint").textContent = $("stHint").title = hint;
     $("zoomPct").textContent = `${Math.round(view.s * 100)}%`;
     $("navPos").textContent = `${cur + 1} / ${images.length}`;
+    for (const [id, m] of [["modeDraw", "draw"], ["modeSub", "subtract"], ["modeEdit", "edit"]]) $(id).setAttribute("aria-pressed", String(mode === m));
+    cv.setAttribute("aria-label", a.skip ? `Image ${cur + 1} of ${images.length}, ${im.name}: marked unusable`
+      : `Image ${cur + 1} of ${images.length}, ${im.name}: ${st.nPolys} area${st.nPolys === 1 ? "" : "s"}, ${st.area.toFixed(1)} square pixels`);
     $("modeDraw").classList.toggle("active", mode === "draw");
     $("modeSub").classList.toggle("active", mode === "subtract"); $("modeSub").classList.toggle("danger", mode === "subtract");
     $("modeEdit").classList.toggle("active", mode === "edit");
     $("delBtn").disabled = !(mode === "edit" && selected >= 0);
   }
   function renderList() {
-    const ul = $("imageList"); ul.textContent = "";
+    const ul = $("imageList"), refocus = ul.contains(document.activeElement);
+    ul.textContent = "";
     let done = 0, skip = 0;
     images.forEach((im, i) => {
       const a = annotations[im.key];
@@ -438,14 +443,19 @@
       if (state === "done") done++; if (state === "skip") skip++;
       const li = document.createElement("li");
       if (i === cur) li.className = "current";
+      const bt = document.createElement("button");
+      bt.type = "button"; bt.className = "imgbtn"; bt.title = im.key; bt.tabIndex = i === Math.max(cur, 0) ? 0 : -1;
+      bt.setAttribute("aria-label", im.key + (state === "done" ? ", annotated" : state === "skip" ? ", unusable" : ""));
+      if (i === cur) bt.setAttribute("aria-current", "true");
       const dot = document.createElement("span"); dot.className = "dot " + state;
-      const nm = document.createElement("span"); nm.className = "nm"; nm.textContent = im.key; nm.title = im.key;
-      li.append(dot, nm); li.onclick = () => go(i);
-      ul.append(li);
+      const nm = document.createElement("span"); nm.className = "nm"; nm.textContent = im.key;
+      bt.append(dot, nm); bt.onclick = () => go(i);
+      li.append(bt); ul.append(li);
     });
     $("progress").textContent = images.length ? `${done}/${images.length} done · ${skip} unusable` : "";
-    const curLi = ul.children[cur]; if (curLi) curLi.scrollIntoView({ block: "nearest" });
+    const curLi = ul.children[cur]; if (curLi) { curLi.scrollIntoView({ block: "nearest" }); if (refocus) curLi.firstChild.focus(); }
   }
+
 
   // ---------- pointer ----------
   function localXY(e) { const r = cv.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; }
@@ -563,7 +573,8 @@
 
   // ---------- keyboard ----------
   window.addEventListener("keydown", (e) => {
-    if (e.target.matches("input, textarea") || $("help").open) return;
+    if (e.target.matches("input, textarea, select") || $("help").open) return;
+    if ((e.key === " " || e.key === "Enter") && e.target.closest("button")) return; // let the focused button act
     const mod = e.metaKey || e.ctrlKey;
     if (e.code === "Space") { spaceDown = true; e.preventDefault(); return; }
     if (mod && e.key.toLowerCase() === "z") { e.preventDefault(); return e.shiftKey ? redo() : undo(); }
@@ -667,6 +678,12 @@
   };
 
   // ---------- wiring ----------
+  $("imageList").addEventListener("keydown", (e) => {
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") { e.preventDefault(); e.stopPropagation(); go(cur + (e.key === "ArrowDown" ? 1 : -1)); }
+  });
+  $("openFiles").onclick = () => $("fileInput").click();
+  $("openDir").onclick = () => $("dirInput").click();
+  $("openJson").onclick = () => $("jsonInput").click();
   $("fileInput").onchange = (e) => { addFiles(e.target.files); e.target.value = ""; };
   $("dirInput").onchange = (e) => { addFiles(e.target.files); e.target.value = ""; };
   wrap.addEventListener("dragover", (e) => { e.preventDefault(); wrap.classList.add("dragover"); });
