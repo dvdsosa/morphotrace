@@ -80,3 +80,14 @@ kbd { font: 11px ui-monospace, monospace; border: 1px solid var(--line); border-
   .help-grid { grid-template-columns: 1fr; }
   .topbar { padding: 8px 16px; }
 }
+
+/* colour-theme switch: light / auto / dark, with a sliding thumb */
+.theme-switch { position: relative; display: inline-grid; grid-template-columns: repeat(3, 30px); height: 30px; padding: 2px; border: 1px solid var(--line); border-radius: 999px; background: var(--btn); }
+.theme-switch button { position: relative; z-index: 1; display: grid; place-items: center; border: 0; background: transparent; color: var(--muted); border-radius: 999px; cursor: pointer; padding: 0; transition: color .2s ease; }
+.theme-switch button:hover { color: var(--text); }
+.theme-switch button[aria-checked="true"] { color: var(--accent-text); }
+.theme-switch button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.theme-thumb { position: absolute; top: 2px; left: 2px; width: 30px; height: 24px; border-radius: 999px; background: var(--accent); box-shadow: 0 1px 3px rgba(0,0,0,.25); transition: transform .25s cubic-bezier(.4,.0,.2,1); }
+.theme-switch[data-value="auto"] .theme-thumb { transform: translateX(30px); }
+.theme-switch[data-value="dark"] .theme-thumb { transform: translateX(60px); }
+@media (prefers-reduced-motion: reduce) { .theme-thumb, .theme-switch button { transition: none; } }

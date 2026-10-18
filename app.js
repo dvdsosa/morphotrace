@@ -3,7 +3,7 @@
 (function () {
   "use strict";
 
-  const TOOL = { name: "MorphoTrace", version: "0.2.1" };
+  const TOOL = { name: "MorphoTrace", version: "0.2.2" };
   const STORE_KEY = "morphotrace.v1";
   const HIT_PX = 8;          // screen-space hit tolerance
   const FREEHAND_STEP = 3;   // screen px between freehand samples
@@ -754,6 +754,20 @@
   document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") { flushTime(); save(); } else shownAt = performance.now(); });
   window.addEventListener("beforeunload", () => { flushTime(); try { localStorage.setItem(STORE_KEY, JSON.stringify({ settings, annotations })); } catch (e) { /* ignore */ } });
   new ResizeObserver(resize).observe(wrap);
+
+  // colour theme: "light", "dark" or "auto" (follow the system); stored per browser
+  function applyTheme(t) {
+    if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; else delete document.documentElement.dataset.theme;
+    const sw = document.querySelector(".theme-switch");
+    sw.dataset.value = t;
+    sw.querySelectorAll("button").forEach((b) => b.setAttribute("aria-checked", String(b.dataset.themeChoice === t)));
+    try { localStorage.setItem("morphotrace.theme", t); } catch (e) { /* ignore */ }
+    draw();
+  }
+  document.querySelectorAll(".theme-switch button").forEach((b) => (b.onclick = () => applyTheme(b.dataset.themeChoice)));
+  let storedTheme = "auto";
+  try { storedTheme = localStorage.getItem("morphotrace.theme") || "auto"; } catch (e) { /* ignore */ }
+  applyTheme(storedTheme);
 
   loadStore();
   $("annotator").value = settings.annotator; $("umpp").value = settings.umpp; $("label").value = settings.label;
