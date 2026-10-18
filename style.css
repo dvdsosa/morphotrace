@@ -59,6 +59,8 @@ body { background: var(--bg); color: var(--text); font: 14px/1.4 system-ui, -app
 .stage { flex: 1; display: flex; flex-direction: column; min-width: 0; }
 .toolbar { display: flex; gap: 6px; padding: 6px 10px; border-bottom: 1px solid var(--line); background: var(--panel); flex-wrap: wrap; align-items: center; }
 .spacer { flex: 1; }
+.zoom-group .seg-btn { display: inline-grid; place-items: center; padding: 5px 8px; }
+.zoom-pct { min-width: 62px; font-variant-numeric: tabular-nums; font-size: 13px; }
 .tb-sep { width: 1px; align-self: stretch; background: var(--line); margin: 2px 4px; }
 .chip { margin-left: 8px; padding: 4px 10px; border-radius: 999px; background: var(--btn); border: 1px solid var(--line); font-size: 12px; max-width: 46vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .chip:empty { display: none; }

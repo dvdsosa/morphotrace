@@ -3,7 +3,7 @@
 (function () {
   "use strict";
 
-  const TOOL = { name: "MorphoTrace", version: "0.2.2" };
+  const TOOL = { name: "MorphoTrace", version: "0.2.3" };
   const STORE_KEY = "morphotrace.v1";
   const HIT_PX = 8;          // screen-space hit tolerance
   const FREEHAND_STEP = 3;   // screen px between freehand samples
@@ -451,6 +451,7 @@
       : mode === "subtract" ? (drawHint || "SUBTRACT · draw over the part to remove; a polygon fully inside an area makes a hole")
       : (selected >= 0 ? "EDIT · drag vertices · double-click a line to add a vertex · right-click a highlighted vertex to delete it · Del deletes the polygon" : "EDIT · click an area to select it");
     if (performance.now() >= flashUntil) $("stHint").textContent = hint;
+    $("zoomPct").textContent = `${Math.round(view.s * 100)}%`;
     $("modeDraw").classList.toggle("active", mode === "draw");
     $("modeSub").classList.toggle("active", mode === "subtract"); $("modeSub").classList.toggle("danger", mode === "subtract");
     $("modeEdit").classList.toggle("active", mode === "edit");
@@ -605,7 +606,10 @@
       case "s": case "S": setMode("subtract"); break;
       case "e": case "E": setMode("edit"); break;
       case "h": case "H": if (mode === "edit") toggleHole(); break;
-      case "f": case "F": fit(); break;
+      case "f": case "F": case "0": fit(); break;
+      case "1": zoomTo100(); break;
+      case "+": case "=": zoomCentre(1.25); break;
+      case "-": case "_": zoomCentre(1 / 1.25); break;
       case "x": case "X": toggleSkip(); break;
       case "ArrowRight": case "n": case "N": go(cur + 1); break;
       case "ArrowLeft": case "p": case "P": go(cur - 1); break;
@@ -739,7 +743,12 @@
   $("delBtn").onclick = deleteSelected;
   $("undoBtn").onclick = undo;
   $("redoBtn").onclick = redo;
-  $("fitBtn").onclick = fit;
+  const zoomCentre = (f) => { const r = wrap.getBoundingClientRect(); if (cur >= 0) zoomAt(r.width / 2, r.height / 2, f); };
+  const zoomTo100 = () => { if (cur >= 0) zoomCentre(1 / view.s); };
+  $("zoomIn").onclick = () => zoomCentre(1.25);
+  $("zoomOut").onclick = () => zoomCentre(1 / 1.25);
+  $("zoomPct").onclick = fit;
+  $("zoomPct").ondblclick = zoomTo100;
   $("skipBtn").onclick = toggleSkip;
   $("prevBtn").onclick = () => go(cur - 1);
   $("nextBtn").onclick = () => go(cur + 1);

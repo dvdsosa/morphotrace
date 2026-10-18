@@ -54,7 +54,9 @@ Images never leave your computer: they're opened with the browser's File API and
 | Zoom at cursor | `Shift` + mouse wheel (or trackpad pinch) |
 | Scroll the image | Mouse wheel (vertical and horizontal) or trackpad swipe |
 | Pan | `Space` + drag, or right/middle-button drag |
-| Fit the image to the window | `F` |
+| Zoom in / out | `+` / `−`, or the magnifier buttons |
+| Fit the image to the window | `F` or `0`, or click the zoom % |
+| Actual pixels (100 %) | `1`, or double-click the zoom % |
 | Previous / next image | `←` / `→` (or `P` / `N`) |
 | Mark image unusable (with reason) | `X` |
 | Help | `?` |
